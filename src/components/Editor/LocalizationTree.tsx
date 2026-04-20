@@ -14,8 +14,31 @@ import {
   Download,
   Upload,
   Languages,
+  FolderOpen,
 } from 'lucide-react';
 import { LocalizationTree, SUPPORTED_LANGUAGES } from '../../types';
+import { localizationFiles } from '../../data/localization';
+
+const JSON_FILE_MAP: Record<string, string> = {
+  'en': 'en-US.json',
+  'en-US': 'en-US.json',
+  'es': 'es.json',
+  'fr': 'fr.json',
+  'de': 'de.json',
+  'it': 'it.json',
+  'pt': 'pt.json',
+  'ja': 'ja.json',
+  'ko': 'ko.json',
+  'zh': 'zh.json',
+  'hi': 'hi-IN.json',
+  'hi-IN': 'hi-IN.json',
+  'ar': 'ar.json',
+  'ru': 'ru.json',
+  'nl': 'nl.json',
+  'sv': 'sv.json',
+  'tr': 'tr.json',
+  'pl': 'pl.json',
+};
 
 interface TreeNodeProps {
   label: string;
@@ -145,7 +168,8 @@ export const LocalizationTreePanel: React.FC = () => {
   };
 
   const handleAddLanguage = (langCode: string) => {
-    addLocalizationLanguage(langCode);
+    const jsonData = localizationFiles[langCode] || localizationFiles[JSON_FILE_MAP[langCode]];
+    addLocalizationLanguage(langCode, jsonData || null);
     setShowAddLanguage(false);
   };
 
@@ -300,19 +324,53 @@ export const LocalizationTreePanel: React.FC = () => {
               <X className="w-3 h-3 text-[#8b949e]" />
             </button>
           </div>
+
+          {/* External JSON Folder Info */}
+          <div className="mb-3 px-2 py-1.5 bg-[#21262d] rounded">
+            <div className="flex items-center gap-2 text-xs text-[#8b949e]">
+              <FolderOpen className="w-3 h-3" />
+              <span className="truncate">Scanning: regional_text folder</span>
+            </div>
+          </div>
+
           <div className="max-h-40 overflow-y-auto space-y-1">
             {SUPPORTED_LANGUAGES.filter(
-              (l) => !localizationTree?.languages.some((lang) => lang.code === l.code)
+              (l) => !localizationTree?.languages.some((lang) => lang.code === l.code) &&
+                     JSON_FILE_MAP[l.code]
             ).map((lang) => (
               <button
                 key={lang.code}
                 onClick={() => handleAddLanguage(lang.code)}
-                className="w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-[#21262d] text-left"
+                className="w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-[#21262d] text-left border border-[#30363d] hover:border-[#58a6ff] transition-colors"
               >
-                <span className="text-sm text-[#e6edf3]">{lang.name}</span>
-                <span className="text-xs text-[#6e7681]">{lang.nativeName}</span>
+                <div className="flex flex-col">
+                  <span className="text-sm text-[#e6edf3]">{lang.name}</span>
+                  <span className="text-xs text-[#6e7681]">{JSON_FILE_MAP[lang.code]}</span>
+                </div>
+                <span className="text-xs text-[#58a6ff] bg-[#58a6ff]/10 px-1.5 py-0.5 rounded">Available</span>
               </button>
             ))}
+            {SUPPORTED_LANGUAGES.filter(
+              (l) => !localizationTree?.languages.some((lang) => lang.code === l.code) &&
+                     !JSON_FILE_MAP[l.code]
+            ).length > 0 && (
+              <>
+                <div className="text-xs text-[#6e7681] mt-2 px-2">Languages without JSON files:</div>
+                {SUPPORTED_LANGUAGES.filter(
+                  (l) => !localizationTree?.languages.some((lang) => lang.code === l.code) &&
+                         !JSON_FILE_MAP[l.code]
+                ).map((lang) => (
+                  <button
+                    key={lang.code}
+                    onClick={() => handleAddLanguage(lang.code)}
+                    className="w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-[#21262d] text-left opacity-50"
+                  >
+                    <span className="text-sm text-[#e6edf3]">{lang.name}</span>
+                    <span className="text-xs text-[#6e7681]">{lang.nativeName}</span>
+                  </button>
+                ))}
+              </>
+            )}
           </div>
         </div>
       )}

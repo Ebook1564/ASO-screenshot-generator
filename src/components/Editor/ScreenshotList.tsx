@@ -191,7 +191,7 @@ export const ScreenshotList: React.FC = () => {
                   <span className="text-[10px] truncate flex-1 text-center" style={{ color: '#8b949e' }}>
                     {screenshot.name}
                   </span>
-                  <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex gap-0.5">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -213,19 +213,17 @@ export const ScreenshotList: React.FC = () => {
                     >
                       <Copy className="w-3 h-3" style={{ color: '#8b949e' }} />
                     </button>
-                    {currentProject.screenshots.length > 1 && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          pushHistory();
-                          deleteScreenshot(screenshot.id);
-                        }}
-                        className="p-0.5 rounded transition-colors"
-                        style={{ backgroundColor: 'transparent' }}
-                      >
-                        <Trash2 className="w-3 h-3" style={{ color: '#8b949e' }} />
-                      </button>
-                    )}
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        console.log('Delete span clicked:', screenshot.id);
+                        deleteScreenshot(screenshot.id);
+                      }}
+                      className="p-0.5 rounded transition-colors hover:bg-[#f85149]/20 cursor-pointer"
+                      style={{ backgroundColor: 'transparent' }}
+                    >
+                        <Trash2 className="w-3 h-3" style={{ color: '#f85149' }} />
+                    </span>
                   </div>
                 </div>
               )}

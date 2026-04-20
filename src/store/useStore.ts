@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import { Project, Screenshot, CanvasElement, Platform, Background, IOS_SIZES, ANDROID_SIZES, LocalizationTree, TextElementNode, ImageElementNode, ScreenNode, LanguageNode, SUPPORTED_LANGUAGES } from '../types';
+import { Project, Screenshot, CanvasElement, Platform, Background, IOS_SIZES, ANDROID_SIZES, LocalizationTree, TextElementNode, ImageElementNode, ScreenNode, LanguageNode, SUPPORTED_LANGUAGES, TextElement } from '../types';
 
 const STORAGE_KEY = 'aso-screenshot-studio';
 
@@ -30,7 +30,7 @@ interface AppState {
   
   generateLocalizationTreeFromStore: () => LocalizationTree | null;
   initializeLocalizationTree: () => LocalizationTree | null;
-  addLocalizationLanguage: (langCode: string) => void;
+  addLocalizationLanguage: (langCode: string, jsonData?: Record<string, Record<string, string>> | null) => void;
   removeLocalizationLanguage: (langId: string) => void;
   updateTranslation: (langId: string, screenId: string, textId: string, value: string) => void;
   resetLocalizationTree: () => void;
@@ -200,8 +200,8 @@ export const useStore = create<AppState>()(
     return tree;
   },
 
-  addLocalizationLanguage: (langCode: string) => {
-    const { localizationTree } = get();
+  addLocalizationLanguage: (langCode: string, jsonData?: Record<string, Record<string, string>> | null) => {
+    const { localizationTree, currentProject, createScreenshot, updateScreenshot } = get();
     if (!localizationTree) return;
 
     const existingLang = localizationTree.languages.find((l) => l.code === langCode);
@@ -211,21 +211,76 @@ export const useStore = create<AppState>()(
     if (!langInfo) return;
 
     const baseLanguage = localizationTree.languages[0];
+    
+    let newScreens: ScreenNode[] = [];
+    
+    if (jsonData && Object.keys(jsonData).length > 0) {
+      newScreens = Object.entries(jsonData).map(([screenName, textData]) => {
+        const textEntries = Object.entries(textData);
+        
+        return {
+          id: uuidv4(),
+          name: screenName,
+          images: [],
+          texts: textEntries.map(([, content]) => ({
+            id: uuidv4(),
+            type: 'text' as const,
+            content: content,
+            fontSize: 16,
+            fontWeight: '400',
+            color: '#ffffff',
+            translatedContent: { [langCode]: content },
+          })),
+        };
+      });
+
+      if (currentProject) {
+        Object.entries(jsonData).forEach(([screenName, textData]) => {
+          const textContent = Object.values(textData)[0] as string;
+          const screenshot = createScreenshot();
+          const textElement: TextElement = {
+            id: uuidv4(),
+            type: 'text',
+            content: textContent || '',
+            x: 100,
+            y: 200,
+            width: 300,
+            height: 50,
+            fontSize: 24,
+            fontWeight: '600',
+            fontFamily: 'Inter, sans-serif',
+            color: '#ffffff',
+            textAlign: 'center',
+            lineHeight: 1.4,
+            letterSpacing: 0,
+          };
+          const updatedScreenshot: Screenshot = {
+            ...screenshot,
+            name: screenName,
+            elements: [textElement],
+          };
+          updateScreenshot(updatedScreenshot, false);
+        });
+      }
+    } else {
+      newScreens = baseLanguage.screens.map((baseScreen) => ({
+        id: uuidv4(),
+        name: baseScreen.name,
+        images: baseScreen.images.map((img) => ({ ...img, id: uuidv4() })),
+        texts: baseScreen.texts.map((text) => ({
+          ...text,
+          id: uuidv4(),
+          translatedContent: {},
+        })),
+      }));
+    }
+    
     const newLanguage: LanguageNode = {
       id: uuidv4(),
       code: langInfo.code,
       name: langInfo.name,
       nativeName: langInfo.nativeName,
-      screens: baseLanguage.screens.map((screen) => ({
-        id: uuidv4(),
-        name: screen.name,
-        images: screen.images.map((img) => ({ ...img, id: uuidv4() })),
-        texts: screen.texts.map((text) => ({
-          ...text,
-          id: uuidv4(),
-          translatedContent: {},
-        })),
-      })),
+      screens: newScreens,
     };
 
     set({
@@ -410,22 +465,29 @@ export const useStore = create<AppState>()(
   },
   
   deleteScreenshot: (screenshotId) => {
-    const { currentProject, updateProject, currentScreenshot } = get();
+    const { currentProject, currentScreenshot, createScreenshot } = get();
     if (!currentProject) return;
     
     const updatedScreenshots = currentProject.screenshots.filter(s => s.id !== screenshotId);
-    const updatedProject = {
-      ...currentProject,
-      screenshots: updatedScreenshots,
-      updatedAt: new Date(),
-    };
     
-    saveToStorage(get().projects.map(p => p.id === currentProject.id ? updatedProject : p));
-    set({ projects: get().projects.map(p => p.id === currentProject.id ? updatedProject : p) });
-    
-    if (currentScreenshot?.id === screenshotId) {
-      set({ currentScreenshot: updatedScreenshots[0] || null, selectedElements: [] });
+    if (updatedScreenshots.length === 0) {
+      const newScreenshot = createScreenshot();
+      set({ currentScreenshot: newScreenshot, selectedElements: [] });
+      return;
     }
+    
+    const updatedProject = { ...currentProject, screenshots: updatedScreenshots, updatedAt: new Date() };
+    
+    set((state) => ({
+      projects: state.projects.map(p => 
+        p.id === currentProject.id ? updatedProject : p
+      ),
+      currentProject: state.currentProject?.id === currentProject.id ? updatedProject : state.currentProject,
+      currentScreenshot: currentScreenshot?.id === screenshotId 
+        ? updatedScreenshots[0] 
+        : state.currentScreenshot,
+      selectedElements: currentScreenshot?.id === screenshotId ? [] : state.selectedElements,
+    }));
   },
   
   reorderScreenshots: (startIndex, endIndex) => {
