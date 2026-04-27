@@ -1,9 +1,12 @@
 import React, { useRef, useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { v4 as uuidv4 } from 'uuid';
+import { toPng } from 'html-to-image';
 import { TextElement, DeviceElement, ShapeElement, ImageElement, DEVICE_MOCKUPS, Background } from '../../types';
 import { LocalizationTreePanel } from './LocalizationTree';
 import { GradientBackgroundEditor } from './GradientBackgroundEditor';
+import { REALISTIC_DEVICES, REALISTIC_DEVICE_GROUPS } from '../../data/realisticDevices';
+import { TEMPLATES } from '../../data/templates';
 import {
   LayoutTemplate,
   Image,
@@ -20,6 +23,8 @@ import {
   ArrowLeftRight,
   Languages,
   Apple,
+  Phone,
+  Plus,
 } from 'lucide-react';
 
 const TEMPLATE_CATEGORIES = [
@@ -64,7 +69,7 @@ const TEXT_STYLE_PRESETS = [
   { id: 'quote', name: 'Quote', fontSize: 32, fontWeight: '400', letterSpacing: 0, lineHeight: 1.6 },
 ];
 
-type SidebarTab = 'templates' | 'assets' | 'icons' | 'text-styles' | 'backgrounds' | 'localization';
+type SidebarTab = 'templates' | 'assets' | 'icons' | 'text-styles' | 'backgrounds' | 'localization' | 'realistic-devices';
 
 export const LeftSidebar: React.FC = () => {
   const {
@@ -75,7 +80,14 @@ export const LeftSidebar: React.FC = () => {
     addElement,
     currentPlatform,
     pushHistory,
+    createScreenshot,
+    customTemplates,
+    loadCustomTemplates,
   } = useStore();
+
+  React.useEffect(() => {
+    loadCustomTemplates();
+  }, [loadCustomTemplates]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [deviceFilter, setDeviceFilter] = useState<'all' | 'ios' | 'android'>('all');
@@ -233,312 +245,34 @@ export const LeftSidebar: React.FC = () => {
     });
   };
 
-  const applyTemplate = (templateType: string) => {
+  const applyTemplate = (templateId: string) => {
     if (!currentScreenshot) return;
+
+    const template = TEMPLATES.find(t => t.id === templateId);
+    if (!template) return;
 
     pushHistory();
 
-    const templates: Record<string, { elements: any[], background: any }> = {
-      feature: {
-        background: {
-          type: 'gradient',
-          value: 'linear-gradient(135deg, #1f6feb 0%, #a371f7 100%)',
-          gradientColors: ['#1f6feb', '#a371f7'],
-        },
-        elements: [
-          {
-            id: uuidv4(),
-            type: 'text',
-            content: 'Your Amazing Feature',
-            x: 100,
-            y: 150,
-            width: 500,
-            height: 120,
-            fontSize: 64,
-            fontWeight: '800',
-            fontFamily: 'Inter, system-ui, sans-serif',
-            color: '#ffffff',
-            textAlign: 'center',
-            lineHeight: 1.1,
-            letterSpacing: -1,
-          },
-          {
-            id: uuidv4(),
-            type: 'text',
-            content: 'Brief description of the feature',
-            x: 100,
-            y: 280,
-            width: 500,
-            height: 60,
-            fontSize: 28,
-            fontWeight: '400',
-            fontFamily: 'Inter, system-ui, sans-serif',
-            color: '#ffffffcc',
-            textAlign: 'center',
-            lineHeight: 1.4,
-            letterSpacing: 0,
-          },
-          {
-            id: uuidv4(),
-            type: 'device',
-            deviceId: currentPlatform === 'ios' ? 'iphone-15-pro' : 'pixel-8',
-            screenshotSrc: '',
-            x: 180,
-            y: 500,
-            width: 340,
-            height: 680,
-            showFrame: true,
-          },
-        ],
-      },
-      'problem-solution': {
-        background: {
-          type: 'gradient',
-          value: 'linear-gradient(135deg, #f0883e 0%, #f85149 100%)',
-          gradientColors: ['#f0883e', '#f85149'],
-        },
-        elements: [
-          {
-            id: uuidv4(),
-            type: 'text',
-            content: 'The Problem',
-            x: 80,
-            y: 120,
-            width: 280,
-            height: 80,
-            fontSize: 36,
-            fontWeight: '700',
-            fontFamily: 'Inter, system-ui, sans-serif',
-            color: '#ffffff',
-            textAlign: 'left',
-            lineHeight: 1.2,
-            letterSpacing: -0.5,
-          },
-          {
-            id: uuidv4(),
-            type: 'text',
-            content: 'The Solution',
-            x: 380,
-            y: 120,
-            width: 280,
-            height: 80,
-            fontSize: 36,
-            fontWeight: '700',
-            fontFamily: 'Inter, system-ui, sans-serif',
-            color: '#ffffff',
-            textAlign: 'left',
-            lineHeight: 1.2,
-            letterSpacing: -0.5,
-          },
-          {
-            id: uuidv4(),
-            type: 'device',
-            deviceId: currentPlatform === 'ios' ? 'iphone-15-pro' : 'pixel-8',
-            screenshotSrc: '',
-            x: 180,
-            y: 400,
-            width: 340,
-            height: 680,
-            showFrame: true,
-          },
-        ],
-      },
-      'before-after': {
-        background: {
-          type: 'gradient',
-          value: 'linear-gradient(135deg, #238636 0%, #2ea043 100%)',
-          gradientColors: ['#238636', '#2ea043'],
-        },
-        elements: [
-          {
-            id: uuidv4(),
-            type: 'text',
-            content: 'BEFORE',
-            x: 100,
-            y: 200,
-            width: 250,
-            height: 50,
-            fontSize: 32,
-            fontWeight: '700',
-            fontFamily: 'Inter, system-ui, sans-serif',
-            color: '#f85149',
-            textAlign: 'center',
-            lineHeight: 1.2,
-            letterSpacing: 2,
-          },
-          {
-            id: uuidv4(),
-            type: 'text',
-            content: 'AFTER',
-            x: 540,
-            y: 200,
-            width: 250,
-            height: 50,
-            fontSize: 32,
-            fontWeight: '700',
-            fontFamily: 'Inter, system-ui, sans-serif',
-            color: '#3fb950',
-            textAlign: 'center',
-            lineHeight: 1.2,
-            letterSpacing: 2,
-          },
-          {
-            id: uuidv4(),
-            type: 'shape',
-            shapeType: 'rounded-rect',
-            x: 50,
-            y: 280,
-            width: 300,
-            height: 500,
-            fill: '#ffffff10',
-            borderRadius: 20,
-          },
-          {
-            id: uuidv4(),
-            type: 'shape',
-            shapeType: 'rounded-rect',
-            x: 380,
-            y: 280,
-            width: 300,
-            height: 500,
-            fill: '#ffffff10',
-            borderRadius: 20,
-          },
-          {
-            id: uuidv4(),
-            type: 'device',
-            deviceId: currentPlatform === 'ios' ? 'iphone-15-pro' : 'pixel-8',
-            screenshotSrc: '',
-            x: 480,
-            y: 350,
-            width: 200,
-            height: 400,
-            showFrame: true,
-          },
-        ],
-      },
-      'social-proof': {
-        background: {
-          type: 'gradient',
-          value: 'linear-gradient(135deg, #a371f7 0%, #1f6feb 100%)',
-          gradientColors: ['#a371f7', '#1f6feb'],
-        },
-        elements: [
-          {
-            id: uuidv4(),
-            type: 'text',
-            content: '★★★★★',
-            x: 100,
-            y: 100,
-            width: 500,
-            height: 60,
-            fontSize: 40,
-            fontWeight: '400',
-            fontFamily: 'Inter, system-ui, sans-serif',
-            color: '#ffffff',
-            textAlign: 'center',
-            lineHeight: 1,
-            letterSpacing: 8,
-          },
-          {
-            id: uuidv4(),
-            type: 'text',
-            content: '"This app changed my life!"',
-            x: 80,
-            y: 180,
-            width: 540,
-            height: 100,
-            fontSize: 42,
-            fontWeight: '600',
-            fontFamily: 'Inter, system-ui, sans-serif',
-            color: '#ffffff',
-            textAlign: 'center',
-            lineHeight: 1.2,
-            letterSpacing: -0.5,
-          },
-          {
-            id: uuidv4(),
-            type: 'text',
-            content: '— Happy User',
-            x: 100,
-            y: 290,
-            width: 500,
-            height: 40,
-            fontSize: 24,
-            fontWeight: '400',
-            fontFamily: 'Inter, system-ui, sans-serif',
-            color: '#ffffffcc',
-            textAlign: 'center',
-            lineHeight: 1.4,
-            letterSpacing: 0,
-          },
-          {
-            id: uuidv4(),
-            type: 'device',
-            deviceId: currentPlatform === 'ios' ? 'iphone-15-pro' : 'pixel-8',
-            screenshotSrc: '',
-            x: 180,
-            y: 450,
-            width: 340,
-            height: 680,
-            showFrame: true,
-          },
-        ],
-      },
-      minimal: {
-        background: {
-          type: 'solid',
-          value: '#0d1117',
-        },
-        elements: [
-          {
-            id: uuidv4(),
-            type: 'text',
-            content: 'Simple. Clean.',
-            x: 100,
-            y: 200,
-            width: 500,
-            height: 100,
-            fontSize: 56,
-            fontWeight: '300',
-            fontFamily: 'Inter, system-ui, sans-serif',
-            color: '#e6edf3',
-            textAlign: 'center',
-            lineHeight: 1.2,
-            letterSpacing: 2,
-          },
-          {
-            id: uuidv4(),
-            type: 'device',
-            deviceId: currentPlatform === 'ios' ? 'iphone-15-pro' : 'pixel-8',
-            screenshotSrc: '',
-            x: 180,
-            y: 450,
-            width: 340,
-            height: 680,
-            showFrame: true,
-          },
-        ],
-      },
-    };
-
-    const template = templates[templateType];
-    if (template) {
-      updateScreenshot({
-        ...currentScreenshot,
-        elements: template.elements,
-        background: template.background,
-      });
-    }
+    updateScreenshot({
+      ...currentScreenshot,
+      elements: template.elements.map(el => ({ ...el, id: uuidv4() })),
+      background: template.background,
+    });
   };
 
-  const tabs: { id: SidebarTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-    { id: 'templates', label: 'Templates', icon: LayoutTemplate },
-    { id: 'assets', label: 'Assets', icon: Image },
-    { id: 'icons', label: 'Icons', icon: Star },
-    { id: 'text-styles', label: 'Styles', icon: Type },
-    { id: 'backgrounds', label: 'Backgrounds', icon: Palette },
-    { id: 'localization', label: 'Localize', icon: Languages },
+  const tabs: { id: SidebarTab; label: string; icon: React.ReactNode }[] = [
+    { id: 'templates', label: 'Templates', icon: <LayoutTemplate className="w-4 h-4" /> },
+    { id: 'assets', label: 'Assets', icon: <Image className="w-4 h-4" /> },
+    { id: 'icons', label: 'Icons', icon: <Star className="w-4 h-4" /> },
+    { id: 'text-styles', label: 'Styles', icon: <Type className="w-4 h-4" /> },
+    { id: 'backgrounds', label: 'Backgrounds', icon: <Palette className="w-4 h-4" /> },
+    { id: 'localization', label: 'Localize', icon: <Languages className="w-4 h-4" /> },
+    { id: 'realistic-devices', label: 'Devices', icon: (
+      <div className="relative w-4 h-4">
+        <Smartphone className="w-4 h-4" />
+        <Plus className="w-2 h-2 absolute -top-1 -right-1" />
+      </div>
+    ) },
   ];
 
   return (
@@ -556,7 +290,7 @@ export const LeftSidebar: React.FC = () => {
                 : { color: '#8b949e' }
             }
           >
-            <tab.icon className="w-4 h-4" />
+            {tab.icon}
             {tab.label}
           </button>
         ))}
@@ -566,26 +300,49 @@ export const LeftSidebar: React.FC = () => {
       <div className="flex-1 overflow-y-auto p-4">
         {/* Templates Tab */}
         {leftSidebarTab === 'templates' && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 mb-4" style={{ color: '#1f6feb' }}>
-              <Sparkles className="w-4 h-4" />
-              <span className="text-sm font-medium">ASO-Optimized Templates</span>
+          <div className="space-y-6">
+            <div>
+              <div className="flex items-center gap-2 mb-4" style={{ color: '#1f6feb' }}>
+                <Sparkles className="w-4 h-4" />
+                <span className="text-sm font-medium">Core Templates</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {TEMPLATES.map(template => (
+                  <button
+                    key={template.id}
+                    onClick={() => applyTemplate(template.id)}
+                    className="w-full aspect-[9/16] rounded-xl border border-[#30363d] overflow-hidden hover:border-[#58a6ff] transition-all group relative"
+                  >
+                    <img src={template.thumbnail} alt={template.name} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[11px] text-white p-2 text-center transition-opacity">
+                      {template.name}
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {TEMPLATE_CATEGORIES.map(cat => (
-              <button
-                key={cat.id}
-                onClick={() => applyTemplate(cat.id)}
-                className="w-full aspect-[9/16] rounded-xl border transition-all flex flex-col items-center justify-center gap-3 group"
-                style={{ 
-                  background: 'linear-gradient(180deg, #21262d 0%, #161b22 100%)',
-                  borderColor: '#30363d'
-                }}
-              >
-                <cat.icon className="w-8 h-8 transition-colors" style={{ color: '#8b949e' }} />
-                <span className="text-sm transition-colors" style={{ color: '#c9d1d9' }}>{cat.name}</span>
-              </button>
-            ))}
+            {customTemplates && customTemplates.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-4" style={{ color: '#238636' }}>
+                  <Star className="w-4 h-4" />
+                  <span className="text-sm font-medium">My Templates</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {customTemplates.map(template => (
+                    <button
+                      key={template.id}
+                      onClick={() => applyTemplate(template.id)}
+                      className="w-full aspect-[9/16] rounded-xl border border-[#30363d] overflow-hidden hover:border-[#58a6ff] transition-all group relative"
+                    >
+                      <div className="w-full h-full bg-[#21262d] flex items-center justify-center text-[#8b949e] text-xs p-2">
+                        {template.name}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -812,6 +569,60 @@ export const LeftSidebar: React.FC = () => {
         {/* Localization Tab */}
         {leftSidebarTab === 'localization' && (
           <LocalizationTreePanel />
+        )}
+
+        {/* Realistic Devices Tab */}
+        {leftSidebarTab === 'realistic-devices' && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-4" style={{ color: '#1f6feb' }}>
+              <Smartphone className="w-4 h-4" />
+              <span className="text-sm font-medium">Realistic Devices</span>
+            </div>
+            
+            {Object.entries(REALISTIC_DEVICE_GROUPS).map(([name, group]) => (
+              <div key={name} className="space-y-2">
+                <div className="text-sm font-medium text-[#e6edf3]">{name}</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {group.variants.map((device) => (
+                    <button
+                      key={device.id}
+                      onClick={() => {
+                        const { currentScreenshot, addElement } = useStore.getState();
+                        if (!currentScreenshot) return;
+
+                        const newElement: DeviceElement = {
+                          id: uuidv4(),
+                          type: 'device',
+                          deviceId: device.id,
+                          screenshotSrc: '',
+                          x: 50,
+                          y: 50,
+                          width: device.mockupDimensions.width / 4,
+                          height: device.mockupDimensions.height / 4,
+                          showFrame: true,
+                          rotation: 0,
+                          orientation: 'portrait',
+                          renderMode: 'realistic',
+                        };
+                        
+                        addElement(newElement);
+                      }}
+                      className="group relative aspect-[9/16] rounded-lg border border-[#30363d] overflow-hidden hover:border-[#58a6ff] transition-all"
+                    >
+                      <img 
+                        src={device.mockupPath} 
+                        alt={device.name} 
+                        className="w-full h-full object-contain p-1"
+                      />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] text-white p-1 text-center">
+                        {device.colors[0]}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>

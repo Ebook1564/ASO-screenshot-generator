@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { Platform, Project } from '../types';
+import { TEMPLATES } from '../data/templates';
 import { 
   Plus, 
   Smartphone, 
@@ -17,7 +18,19 @@ import {
 } from 'lucide-react';
 
 export const Dashboard: React.FC = () => {
-  const { projects, createProject, setCurrentProject, deleteProject, updateProject } = useStore();
+  const { 
+    projects, 
+    createProject, 
+    setCurrentProject, 
+    deleteProject, 
+    updateProject, 
+    customTemplates, 
+    loadCustomTemplates 
+  } = useStore();
+  
+  useEffect(() => {
+    loadCustomTemplates();
+  }, [loadCustomTemplates]);
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [newAppName, setNewAppName] = useState('');
@@ -268,15 +281,54 @@ export const Dashboard: React.FC = () => {
         {/* Template Preview Section */}
         <div className="mt-16">
           <h2 className="text-2xl font-bold text-[#e6edf3] mb-6">Template Library</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {['Feature Highlight', 'Problem → Solution', 'Before / After', 'Social Proof', 'Minimal'].map((name, i) => (
-              <div key={i} className="aspect-[9/16] bg-[#161b22] rounded-xl border border-[#30363d] flex items-center justify-center cursor-pointer hover:border-[#238636]/50 transition-all group">
-                <div className="text-center p-4">
-                  <div className="w-10 h-10 bg-[#21262d] rounded-lg mx-auto mb-3 group-hover:bg-[#238636]/30 transition-colors" />
-                  <span className="text-sm text-[#8b949e] group-hover:text-white transition-colors">{name}</span>
+          
+          <div className="space-y-8">
+            {/* Core Templates */}
+            <div>
+              <div className="flex items-center gap-2 mb-4 text-[#58a6ff]">
+                <Sparkles className="w-5 h-5" />
+                <h3 className="text-lg font-semibold text-[#e6edf3]">Core Templates</h3>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {TEMPLATES.map((template) => (
+                  <button
+                    key={template.id}
+                    onClick={() => {
+                        alert(`Template ${template.name} selected! Start a new project to apply.`);
+                    }}
+                    className="aspect-[9/16] bg-[#161b22] rounded-xl border border-[#30363d] overflow-hidden hover:border-[#58a6ff] transition-all group relative"
+                  >
+                    <img src={template.thumbnail} alt={template.name} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-sm p-4 transition-opacity text-center font-medium">
+                      {template.name}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom Presets */}
+            {customTemplates && customTemplates.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-4 text-[#238636]">
+                  <Star className="w-5 h-5" />
+                  <h3 className="text-lg font-semibold text-[#e6edf3]">My Saved Presets</h3>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {customTemplates.map((template) => (
+                    <button
+                      key={template.id}
+                      className="aspect-[9/16] bg-[#161b22] rounded-xl border border-[#30363d] p-4 flex flex-col items-center justify-center hover:border-[#238636] transition-all group"
+                    >
+                      <div className="w-12 h-12 bg-[#21262d] rounded-lg mb-3 flex items-center justify-center">
+                        <Star className="w-6 h-6 text-[#238636]" />
+                      </div>
+                      <span className="text-sm text-[#c9d1d9] font-medium">{template.name}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </main>

@@ -8,12 +8,10 @@ import { ScreenshotList } from './ScreenshotList';
 import { ExportModal } from './ExportModal';
 import { AITextGenerator } from './AITextGenerator';
 import { StorePreview } from './StorePreview';
-import { Film, PanelRight } from 'lucide-react';
 
 export const Editor: React.FC = () => {
   const {
     currentProject,
-    createScreenshot,
     deleteSelectedElements,
     selectedElements,
     copySelected,
@@ -28,13 +26,7 @@ export const Editor: React.FC = () => {
   const [showAIGenerator, setShowAIGenerator] = useState(false);
   const [showStorePreview, setShowStorePreview] = useState(false);
   const [showRightSidebar, setShowRightSidebar] = useState(true);
-  const [showFilmstrip, setShowFilmstrip] = useState(true);
-
-  useEffect(() => {
-    if (currentProject && currentProject.screenshots.length === 0) {
-      createScreenshot();
-    }
-  }, [currentProject, createScreenshot]);
+  const [showFilmstrip, setShowFilmstrip] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

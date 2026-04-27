@@ -433,35 +433,120 @@ export const RightSidebar: React.FC = () => {
           </div>
         </div>
 
-        {/* Render Mode Control */}
-        <div>
-          <label className="block text-xs font-medium mb-2" style={{ color: '#8b949e' }}>Render Mode</label>
-          <div className="flex gap-2">
-            <button
-              onClick={() => updateElement(element.id, { renderMode: '2d' })}
-              className="flex-1 px-3 py-2 rounded-lg text-sm transition-colors"
-              style={{ 
-                backgroundColor: element.renderMode === '2d' ? '#1f6feb' : '#21262d',
-                color: element.renderMode === '2d' ? '#fff' : '#8b949e'
-              }}
-            >
-              2D
-            </button>
-            <button
-              onClick={() => updateElement(element.id, { renderMode: '3d' })}
-              className="flex-1 px-3 py-2 rounded-lg text-sm transition-colors"
-              style={{ 
-                backgroundColor: element.renderMode === '3d' ? '#1f6feb' : '#21262d',
-                color: element.renderMode === '3d' ? '#fff' : '#8b949e'
-              }}
-            >
-              3D
-            </button>
-          </div>
-        </div>
+        {/* Screenshot Scale Control - ONLY for realistic devices with screenshots */}
+        {element.renderMode === 'realistic' && element.screenshotSrc && (
+          <div className="pt-4 border-t border-[#30363d]">
+            <label className="block text-xs font-medium mb-2" style={{ color: '#8b949e' }}>Screenshot Zoom</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="range"
+                min="0.1"
+                max="3"
+                step="0.01"
+                value={(element as any).screenshotScale || 1}
+                onChange={(e) => {
+                  updateElement(element.id, { ...element, screenshotScale: parseFloat(e.target.value) });
+                }}
+                className="flex-1"
+              />
+              <span className="text-sm w-12 text-right" style={{ color: '#c9d1d9' }}>
+                {Math.round(((element as any).screenshotScale || 1) * 100)}%
+              </span>
+            </div>
+            <div className="flex gap-2 mt-2">
+              <button
+                onClick={() => updateElement(element.id, { 
+                  ...element, 
+                  screenshotScale: 1,
+                  screenshotOffsetX: 0,
+                  screenshotOffsetY: 0 
+                })}
+                className="flex-1 px-3 py-1.5 rounded-lg text-xs transition-colors"
+                style={{ backgroundColor: '#21262d', color: '#c9d1d9', border: '1px solid #30363d' }}
+              >
+                Reset All
+              </button>
+              <button
+                onClick={() => updateElement(element.id, { ...element, screenshotSrc: '' })}
+                className="px-3 py-1.5 rounded-lg text-xs transition-colors"
+                style={{ backgroundColor: 'rgba(248, 81, 73, 0.1)', color: '#f85149', border: '1px solid rgba(248, 81, 73, 0.2)' }}
+              >
+                Remove
+              </button>
+            </div>
 
-        {/* Orientation Control (only for 2D mode) */}
-        {element.renderMode === '2d' && (
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="block text-[10px] uppercase font-bold mb-1" style={{ color: '#6e7681' }}>Offset X</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range"
+                    min="-500"
+                    max="500"
+                    value={(element as any).screenshotOffsetX || 0}
+                    onChange={(e) => {
+                      updateElement(element.id, { ...element, screenshotOffsetX: parseInt(e.target.value) });
+                    }}
+                    className="flex-1"
+                  />
+                  <span className="text-xs w-8 text-right" style={{ color: '#c9d1d9' }}>
+                    {Math.round((element as any).screenshotOffsetX || 0)}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase font-bold mb-1" style={{ color: '#6e7681' }}>Offset Y</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range"
+                    min="-500"
+                    max="500"
+                    value={(element as any).screenshotOffsetY || 0}
+                    onChange={(e) => {
+                      updateElement(element.id, { ...element, screenshotOffsetY: parseInt(e.target.value) });
+                    }}
+                    className="flex-1"
+                  />
+                  <span className="text-xs w-8 text-right" style={{ color: '#c9d1d9' }}>
+                    {Math.round((element as any).screenshotOffsetY || 0)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Render Mode Control - Hidden for realistic devices */}
+        {element.renderMode !== 'realistic' && (
+          <div>
+            <label className="block text-xs font-medium mb-2" style={{ color: '#8b949e' }}>Render Mode</label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => updateElement(element.id, { renderMode: '2d' })}
+                className="flex-1 px-3 py-2 rounded-lg text-sm transition-colors"
+                style={{ 
+                  backgroundColor: element.renderMode === '2d' ? '#1f6feb' : '#21262d',
+                  color: element.renderMode === '2d' ? '#fff' : '#8b949e'
+                }}
+              >
+                2D
+              </button>
+              <button
+                onClick={() => updateElement(element.id, { renderMode: '3d' })}
+                className="flex-1 px-3 py-2 rounded-lg text-sm transition-colors"
+                style={{ 
+                  backgroundColor: element.renderMode === '3d' ? '#1f6feb' : '#21262d',
+                  color: element.renderMode === '3d' ? '#fff' : '#8b949e'
+                }}
+              >
+                3D
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Orientation Control (only for 2D mode, not realistic) */}
+        {element.renderMode === '2d' && element.renderMode !== 'realistic' && (
           <div>
             <label className="block text-xs font-medium mb-2" style={{ color: '#8b949e' }}>Orientation</label>
             <div className="flex gap-2">

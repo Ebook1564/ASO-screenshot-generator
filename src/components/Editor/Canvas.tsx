@@ -3,6 +3,7 @@ import { useStore } from '../../store/useStore';
 import { CanvasElement, IOS_SIZES, ANDROID_SIZES, DEVICE_MOCKUPS, DeviceElement } from '../../types';
 import { Smartphone } from 'lucide-react';
 import { Device3DPreview } from './Device3DRenderer';
+import { getRealisticDeviceById } from '../../data/realisticDevices';
 
 interface DragState {
   isDragging: boolean;
@@ -172,7 +173,14 @@ export const Canvas: React.FC = () => {
     }
 
     const deviceConfig = element.type === 'device' ? DEVICE_MOCKUPS.find(d => d.id === element.deviceId) : null;
-    const aspectRatio = deviceConfig ? deviceConfig.width / deviceConfig.height : element.width / element.height;
+    const realisticDevice = element.type === 'device' ? getRealisticDeviceById(element.deviceId) : null;
+    
+    let aspectRatio = element.width / element.height;
+    if (realisticDevice) {
+      aspectRatio = realisticDevice.mockupDimensions.width / realisticDevice.mockupDimensions.height;
+    } else if (deviceConfig) {
+      aspectRatio = deviceConfig.width / deviceConfig.height;
+    }
 
     setResizeState({
       isResizing: true,
@@ -394,7 +402,7 @@ export const Canvas: React.FC = () => {
     return {};
   };
 
-  const renderElement = (element: CanvasElement) => {
+  const renderElement = (element: CanvasElement, index: number) => {
     const isSelected = selectedElements.some(el => el.id === element.id);
     const baseStyle: React.CSSProperties = {
       position: 'absolute',
@@ -403,11 +411,13 @@ export const Canvas: React.FC = () => {
       width: element.width,
       height: element.height,
       cursor: 'move',
+      zIndex: index + 1,
     };
 
     const selectionStyle: React.CSSProperties = isSelected ? {
-      outline: '2px solid #1f6feb',
+      outline: '2px solid #58a6ff',
       outlineOffset: '2px',
+      boxShadow: '0 0 0 1px rgba(88, 166, 255, 0.5)',
     } : {};
 
     const renderResizeHandles = () => {
@@ -415,20 +425,20 @@ export const Canvas: React.FC = () => {
       
       const handles = ['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se'];
       const handlePositions: Record<string, React.CSSProperties> = {
-        nw: { top: -4, left: -4, cursor: 'nwse-resize' },
-        n: { top: -4, left: '50%', transform: 'translateX(-50%)', cursor: 'ns-resize' },
-        ne: { top: -4, right: -4, cursor: 'nesw-resize' },
-        w: { top: '50%', left: -4, transform: 'translateY(-50%)', cursor: 'ew-resize' },
-        e: { top: '50%', right: -4, transform: 'translateY(-50%)', cursor: 'ew-resize' },
-        sw: { bottom: -4, left: -4, cursor: 'nesw-resize' },
-        s: { bottom: -4, left: '50%', transform: 'translateX(-50%)', cursor: 'ns-resize' },
-        se: { bottom: -4, right: -4, cursor: 'nwse-resize' },
+        nw: { top: -6, left: -6, cursor: 'nwse-resize' },
+        n: { top: -6, left: '50%', transform: 'translateX(-50%)', cursor: 'ns-resize' },
+        ne: { top: -6, right: -6, cursor: 'nesw-resize' },
+        w: { top: '50%', left: -6, transform: 'translateY(-50%)', cursor: 'ew-resize' },
+        e: { top: '50%', right: -6, transform: 'translateY(-50%)', cursor: 'ew-resize' },
+        sw: { bottom: -6, left: -6, cursor: 'nesw-resize' },
+        s: { bottom: -6, left: '50%', transform: 'translateX(-50%)', cursor: 'ns-resize' },
+        se: { bottom: -6, right: -6, cursor: 'nwse-resize' },
       };
 
       return handles.map(handle => (
         <div
           key={handle}
-          className="absolute w-2 h-2 bg-white border-2 border-[#1f6feb] rounded-sm z-50"
+          className="absolute w-3 h-3 bg-white border-2 border-[#58a6ff] rounded-sm z-50 shadow-lg"
           style={handlePositions[handle]}
           onMouseDown={(e) => handleResizeMouseDown(e, element, handle)}
         />
@@ -514,6 +524,92 @@ export const Canvas: React.FC = () => {
               {renderResizeHandles()}
             </div>
           );
+        }
+
+        if (deviceElement.renderMode === 'realistic') {
+          const realisticDevice = getRealisticDeviceById(deviceElement.deviceId);
+          
+          if (realisticDevice) {
+            const mockupPath = realisticDevice.mockupPath.replace(/'/g, '%27');
+            const screenshotScale = (element as any).screenshotScale || 1;
+            const mockupWidth = realisticDevice.mockupDimensions.width;
+            const mockupHeight = realisticDevice.mockupDimensions.height;
+            const screenX = realisticDevice.screenArea.x;
+            const screenY = realisticDevice.screenArea.y;
+            const screenW = realisticDevice.screenArea.width;
+            const screenH = realisticDevice.screenArea.height;
+            
+            const screenLeftPct = (screenX / mockupWidth) * 100;
+            const screenTopPct = (screenY / mockupHeight) * 100;
+            const screenWidthPct = (screenW / mockupWidth) * 100;
+            const screenHeightPct = (screenH / mockupHeight) * 100;
+            
+            // Calculate corner radius based on mockup scale
+            const scaleX = element.width / mockupWidth;
+            const cornerRadius = realisticDevice.screenCornerRadius * scaleX;
+            
+            return (
+              <div
+                key={element.id}
+                style={{
+                  ...baseStyle,
+                  ...selectionStyle,
+                  transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
+                }}
+                onMouseDown={(e) => handleMouseDown(e, element)}
+              >
+                <div className="relative w-full h-full">
+                  {/* Screenshot container - positioned exactly at screen area with overflow hidden */}
+                  {element.screenshotSrc && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: screenLeftPct + '%',
+                        top: screenTopPct + '%',
+                        width: screenWidthPct + '%',
+                        height: screenHeightPct + '%',
+                        overflow: 'hidden',
+                        borderRadius: cornerRadius + 'px',
+                        zIndex: 1,
+                      }}
+                    >
+                      <img
+                        src={element.screenshotSrc}
+                        alt="Screenshot"
+                        style={{
+                          position: 'absolute',
+                          left: 0,
+                          top: 0,
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'fill',
+                          transform: `scale(${screenshotScale}) translate(${((element as any).screenshotOffsetX || 0)}px, ${((element as any).screenshotOffsetY || 0)}px)`,
+                          transformOrigin: 'center center',
+                        }}
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Device Mockup Frame - MUST be on top of screenshot */}
+                  <img
+                    src={mockupPath}
+                    alt="Device Mockup"
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'fill',
+                      zIndex: 10,
+                      pointerEvents: 'none',
+                    }}
+                    draggable={false}
+                  />
+                </div>
+                {renderResizeHandles()}
+              </div>
+            );
+          }
         }
         
         const frameColor = deviceConfig?.frameColor || '#21262d';
@@ -901,6 +997,7 @@ export const Canvas: React.FC = () => {
     <div className="flex-1 overflow-auto bg-[#0d1117] flex items-center justify-center p-8">
       <div
         ref={canvasRef}
+        data-editor-canvas
         className="relative canvas-bg shadow-2xl"
         style={{
           width: canvasWidth * zoom,

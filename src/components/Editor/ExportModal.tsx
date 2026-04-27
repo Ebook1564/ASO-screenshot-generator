@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useStore } from '../../store/useStore';
-import { IOS_SIZES, ANDROID_SIZES } from '../../types';
+import { IOS_SIZES, ANDROID_SIZES, DeviceElement } from '../../types';
 import { toPng } from 'html-to-image';
 import JSZip from 'jszip';
+import { getRealisticDeviceById } from '../../data/realisticDevices';
 import {
   X,
   Download,
@@ -22,6 +23,7 @@ interface ExportModalProps {
 
 export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
   const { currentProject, currentPlatform } = useStore();
+  const [exportScreens, setExportScreens] = useState(currentProject?.screenshots || []);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
@@ -29,6 +31,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => 
   const [exportMode, setExportMode] = useState<'individual' | 'zip'>('zip');
 
   if (!isOpen || !currentProject) return null;
+
+  const removeScreen = (id: string) => {
+    setExportScreens(prev => prev.filter(s => s.id !== id));
+  };
 
   const sizes = currentPlatform === 'ios' ? IOS_SIZES : ANDROID_SIZES;
 
@@ -48,7 +54,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => 
     }
   };
 
-  const createExportCanvas = (screenshot: typeof currentProject.screenshots[0], size: typeof sizes[0]) => {
+  const createExportCanvas = (screenshot: typeof exportScreens[0], size: typeof sizes[0]) => {
     const exportCanvas = document.createElement('div');
     exportCanvas.style.position = 'fixed';
     exportCanvas.style.left = '-9999px';
@@ -90,27 +96,61 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => 
         el.style.wordBreak = 'break-word';
         el.textContent = element.content;
       } else if (element.type === 'device') {
-        if (element.showFrame) {
-          el.style.backgroundColor = '#1e293b';
-          el.style.borderRadius = '40px';
-          el.style.padding = '12px';
-        }
+        const deviceElement = element as DeviceElement;
         
-        const screenDiv = document.createElement('div');
-        screenDiv.style.width = '100%';
-        screenDiv.style.height = '100%';
-        screenDiv.style.borderRadius = element.showFrame ? '32px' : '8px';
-        screenDiv.style.overflow = 'hidden';
-        
-        if (element.screenshotSrc) {
-          screenDiv.style.backgroundImage = `url(${element.screenshotSrc})`;
-          screenDiv.style.backgroundSize = 'cover';
-          screenDiv.style.backgroundPosition = 'center';
+        if (deviceElement.renderMode === 'realistic') {
+          const realisticDevice = getRealisticDeviceById(deviceElement.deviceId);
+          if (realisticDevice) {
+            el.style.overflow = 'hidden';
+            
+            // Screenshot on bottom
+            if (deviceElement.screenshotSrc) {
+              const screenshotImg = document.createElement('img');
+              screenshotImg.src = deviceElement.screenshotSrc;
+              screenshotImg.style.position = 'absolute';
+              screenshotImg.style.left = (realisticDevice.screenArea.x / realisticDevice.mockupDimensions.width) * 100 + '%';
+              screenshotImg.style.top = (realisticDevice.screenArea.y / realisticDevice.mockupDimensions.height) * 100 + '%';
+              screenshotImg.style.width = (realisticDevice.screenArea.width / realisticDevice.mockupDimensions.width) * 100 + '%';
+              screenshotImg.style.height = (realisticDevice.screenArea.height / realisticDevice.mockupDimensions.height) * 100 + '%';
+              screenshotImg.style.objectFit = 'fill';
+              screenshotImg.style.zIndex = '0';
+              el.appendChild(screenshotImg);
+            }
+            
+            // Mockup on top
+            const mockupImg = document.createElement('img');
+            mockupImg.src = realisticDevice.mockupPath;
+            mockupImg.style.position = 'relative';
+            mockupImg.style.width = '100%';
+            mockupImg.style.height = '100%';
+            mockupImg.style.objectFit = 'contain';
+            mockupImg.style.zIndex = '10';
+            el.appendChild(mockupImg);
+          }
         } else {
-          screenDiv.style.backgroundColor = '#1e293b';
+          // Fallback or 2D/3D mode (simplified for now as ExportModal was doing)
+          if (element.showFrame) {
+            el.style.backgroundColor = '#1e293b';
+            el.style.borderRadius = '40px';
+            el.style.padding = '12px';
+          }
+          
+          const screenDiv = document.createElement('div');
+          screenDiv.style.width = '100%';
+          screenDiv.style.height = '100%';
+          screenDiv.style.borderRadius = element.showFrame ? '32px' : '8px';
+          screenDiv.style.overflow = 'hidden';
+          
+          if (element.screenshotSrc) {
+            screenDiv.style.backgroundImage = `url(${element.screenshotSrc})`;
+            screenDiv.style.backgroundSize = 'cover';
+            screenDiv.style.backgroundPosition = 'center';
+          } else {
+            screenDiv.style.backgroundColor = '#1e293b';
+          }
+          
+          el.appendChild(screenDiv);
         }
-        
-        el.appendChild(screenDiv);
       } else if (element.type === 'shape') {
         el.style.backgroundColor = element.fill;
         el.style.borderRadius = element.shapeType === 'circle' ? '50%' : `${element.borderRadius || 0}px`;
@@ -152,7 +192,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => 
 
     try {
       const zip = JSZip();
-      const totalExports = currentProject.screenshots.length * selectedSizes.length;
+      const totalExports = exportScreens.length * selectedSizes.length;
       let completed = 0;
 
       const platformFolder = currentPlatform === 'ios' ? 'iOS' : 'Android';
@@ -162,7 +202,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => 
         throw new Error('Failed to create folder in ZIP');
       }
 
-      for (const screenshot of currentProject.screenshots) {
+      for (const screenshot of exportScreens) {
         for (const sizeId of selectedSizes) {
           const size = sizes.find(s => s.id === sizeId);
           if (!size) continue;
@@ -231,10 +271,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => 
     setExportProgress(0);
 
     try {
-      const totalExports = currentProject.screenshots.length * selectedSizes.length;
+      const totalExports = exportScreens.length * selectedSizes.length;
       let completed = 0;
 
-      for (const screenshot of currentProject.screenshots) {
+      for (const screenshot of exportScreens) {
         for (const sizeId of selectedSizes) {
           const size = sizes.find(s => s.id === sizeId);
           if (!size) continue;
@@ -295,8 +335,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => 
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[#161b22] border border-[#30363d] rounded-xl w-full max-w-lg shadow-2xl">
-        <div className="flex items-center justify-between p-6 border-b border-[#30363d]">
+      <div className="bg-[#161b22] border border-[#30363d] rounded-xl w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-6 border-b border-[#30363d] flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-[#21262d] rounded-xl flex items-center justify-center">
               <Download className="w-5 h-5 text-[#58a6ff]" />
@@ -314,7 +354,24 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => 
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-6 overflow-y-auto flex-1">
+          <div>
+            <h3 className="text-sm font-medium text-[#8b949e] mb-3">Screens to Export ({exportScreens.length})</h3>
+            <div className="space-y-2 max-h-40 overflow-y-auto pr-2">
+              {exportScreens.map((screen) => (
+                <div key={screen.id} className="flex items-center justify-between p-2 bg-[#21262d] rounded-lg">
+                  <span className="text-sm text-[#e6edf3] truncate">{screen.name}</span>
+                  <button
+                    onClick={() => removeScreen(screen.id)}
+                    className="p-1 hover:bg-[#30363d] rounded"
+                  >
+                    <X className="w-3 h-3 text-[#8b949e]" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="flex items-center gap-2">
             {currentPlatform === 'ios' ? (
               <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-full text-sm">
@@ -430,7 +487,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => 
               <Package className="w-5 h-5 text-[#8b949e]" />
               <div>
                 <span className="font-medium">
-                  {currentProject.screenshots.length * selectedSizes.length} files
+                  {exportScreens.length * selectedSizes.length} files
                 </span>
                 <span className="text-[#6e7681]"> will be exported</span>
               </div>

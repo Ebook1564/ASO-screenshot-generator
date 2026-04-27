@@ -16,4 +16,21 @@ export default defineConfig({
       "@": path.resolve(__dirname, "src"),
     },
   },
+  optimizeDeps: {
+    include: [],
+  },
+  server: {
+    host: true,
+    port: 80,
+    fs: {
+      allow: [".", ".."],
+    },
+  },
+  build: {
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, "index.html"),
+      },
+    },
+  },
 });

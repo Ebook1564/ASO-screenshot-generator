@@ -18,6 +18,8 @@ import {
   Magnet,
   Film,
   PanelRight,
+  LayoutTemplate,
+  Save,
 } from 'lucide-react';
 
 interface TopToolbarProps {
@@ -57,6 +59,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
     duplicateScreenshot,
     currentScreenshot,
     pushHistory,
+    saveAsTemplate,
   } = useStore();
 
   const sizes = currentPlatform === 'ios' ? IOS_SIZES : ANDROID_SIZES;
@@ -123,6 +126,21 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
           style={{ color: '#8b949e' }}
         >
           <Copy className="w-4 h-4" />
+        </button>
+
+        <div className="w-px h-5" style={{ backgroundColor: '#30363d' }} />
+
+        {/* Save as Template */}
+        <button
+          onClick={() => {
+            const name = prompt('Template Name:');
+            if (name) saveAsTemplate(name, 'custom', '');
+          }}
+          className="p-1.5 rounded-md transition-colors hover:bg-[#21262d]"
+          title="Save as Template"
+          style={{ color: '#8b949e' }}
+        >
+          <LayoutTemplate className="w-4 h-4" />
         </button>
       </div>
 

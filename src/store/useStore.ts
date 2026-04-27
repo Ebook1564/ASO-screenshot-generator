@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import { Project, Screenshot, CanvasElement, Platform, Background, IOS_SIZES, ANDROID_SIZES, LocalizationTree, TextElementNode, ImageElementNode, ScreenNode, LanguageNode, SUPPORTED_LANGUAGES, TextElement } from '../types';
+import { Project, Screenshot, CanvasElement, Platform, Background, IOS_SIZES, ANDROID_SIZES, LocalizationTree, TextElementNode, ImageElementNode, ScreenNode, LanguageNode, SUPPORTED_LANGUAGES, TextElement, DeviceElement } from '../types';
+import { TemplateConfig } from '../data/templates';
+import { localizationFiles } from '../data/localization';
 
 const STORAGE_KEY = 'aso-screenshot-studio';
 
@@ -24,14 +26,16 @@ interface AppState {
   historyIndex: number;
   
   view: 'dashboard' | 'editor';
-  leftSidebarTab: 'templates' | 'assets' | 'icons' | 'text-styles' | 'backgrounds' | 'localization';
+  leftSidebarTab: 'templates' | 'assets' | 'icons' | 'text-styles' | 'backgrounds' | 'localization' | 'realistic-devices';
   
   localizationTree: LocalizationTree | null;
+  customTemplates: TemplateConfig[];
   
   generateLocalizationTreeFromStore: () => LocalizationTree | null;
   initializeLocalizationTree: () => LocalizationTree | null;
   addLocalizationLanguage: (langCode: string, jsonData?: Record<string, Record<string, string>> | null) => void;
   removeLocalizationLanguage: (langId: string) => void;
+  reAddLocalizationScreens: (langCode: string, screenIndices?: number[]) => void;
   updateTranslation: (langId: string, screenId: string, textId: string, value: string) => void;
   resetLocalizationTree: () => void;
   
@@ -75,7 +79,7 @@ interface AppState {
   setZoom: (zoom: number) => void;
   
   setView: (view: 'dashboard' | 'editor') => void;
-  setLeftSidebarTab: (tab: 'templates' | 'assets' | 'icons' | 'text-styles' | 'backgrounds' | 'localization') => void;
+  setLeftSidebarTab: (tab: 'templates' | 'assets' | 'icons' | 'text-styles' | 'backgrounds' | 'localization' | 'realistic-devices') => void;
   
   undo: () => void;
   redo: () => void;
@@ -137,42 +141,97 @@ export const useStore = create<AppState>()(
       view: 'dashboard',
       leftSidebarTab: 'templates',
       localizationTree: null,
-  
-  generateLocalizationTreeFromStore: () => {
+      customTemplates: [],
+      
+      generateLocalizationTreeFromStore: () => {
     const { currentProject } = get();
     if (!currentProject) return null;
 
-    const screens: ScreenNode[] = currentProject.screenshots.map((screen) => {
-      const images: ImageElementNode[] = [];
-      const texts: TextElementNode[] = [];
+    let screens: ScreenNode[] = [];
+    const enJson = localizationFiles['en-US'];
+    const { createScreenshot, updateScreenshot } = get();
 
-      screen.elements.forEach((el: CanvasElement) => {
-        if (el.type === 'image') {
-          images.push({
-            id: el.id,
-            type: 'image',
-            name: `Image ${images.length + 1}`,
-          });
-        } else if (el.type === 'text') {
-          texts.push({
-            id: el.id,
-            type: 'text',
-            content: (el as any).content || '',
-            fontSize: (el as any).fontSize || 16,
-            fontWeight: (el as any).fontWeight || '400',
-            color: (el as any).color || '#ffffff',
-            translatedContent: {},
-          });
-        }
+    if (enJson && Object.keys(enJson).length > 0) {
+      screens = Object.entries(enJson).map(([screenName, textData]) => {
+        const textEntries = Object.entries(textData);
+        
+        return {
+          id: uuidv4(),
+          name: screenName,
+          images: [] as ImageElementNode[],
+          texts: textEntries.map(([, content]) => ({
+            id: uuidv4(),
+            type: 'text' as const,
+            content: content,
+            fontSize: 16,
+            fontWeight: '400',
+            color: '#ffffff',
+            translatedContent: { 'en-US': content },
+          })),
+        };
       });
 
-      return {
-        id: screen.id,
-        name: screen.name,
-        images,
-        texts,
-      };
-    });
+      Object.entries(enJson).forEach(([screenName, textData]) => {
+        const screenshot = createScreenshot();
+        const textEntries = Object.entries(textData);
+        
+        const textElements: TextElement[] = textEntries.map(([, content], textIndex) => ({
+          id: uuidv4(),
+          type: 'text',
+          content: content as string,
+          x: 100,
+          y: 180 + (textIndex * 60),
+          width: 300,
+          height: 50,
+          fontSize: 24,
+          fontWeight: '600',
+          fontFamily: 'Inter, sans-serif',
+          color: '#ffffff',
+          textAlign: 'center',
+          lineHeight: 1.4,
+          letterSpacing: 0,
+        }));
+        
+        const updatedScreenshot: Screenshot = {
+          ...screenshot,
+          name: screenName,
+          elements: textElements,
+        };
+        updateScreenshot(updatedScreenshot, false);
+      });
+    } else {
+      screens = currentProject.screenshots.map((screen) => {
+        const images: ImageElementNode[] = [];
+        const texts: TextElementNode[] = [];
+
+        screen.elements.forEach((el: CanvasElement) => {
+          if (el.type === 'image') {
+            images.push({
+              id: el.id,
+              type: 'image',
+              name: `Image ${images.length + 1}`,
+            });
+          } else if (el.type === 'text') {
+            texts.push({
+              id: el.id,
+              type: 'text',
+              content: (el as any).content || '',
+              fontSize: (el as any).fontSize || 16,
+              fontWeight: (el as any).fontWeight || '400',
+              color: (el as any).color || '#ffffff',
+              translatedContent: {},
+            });
+          }
+        });
+
+        return {
+          id: screen.id,
+          name: screen.name,
+          images,
+          texts,
+        };
+      });
+    }
 
     const baseLang = SUPPORTED_LANGUAGES.find((l) => l.code === 'en') || SUPPORTED_LANGUAGES[0];
     const baseLanguageNode: LanguageNode = {
@@ -236,14 +295,15 @@ export const useStore = create<AppState>()(
 
       if (currentProject) {
         Object.entries(jsonData).forEach(([screenName, textData]) => {
-          const textContent = Object.values(textData)[0] as string;
           const screenshot = createScreenshot();
-          const textElement: TextElement = {
+          const textEntries = Object.entries(textData);
+          
+          const textElements: TextElement[] = textEntries.map(([, content], textIndex) => ({
             id: uuidv4(),
             type: 'text',
-            content: textContent || '',
+            content: content as string,
             x: 100,
-            y: 200,
+            y: 180 + (textIndex * 60),
             width: 300,
             height: 50,
             fontSize: 24,
@@ -253,11 +313,12 @@ export const useStore = create<AppState>()(
             textAlign: 'center',
             lineHeight: 1.4,
             letterSpacing: 0,
-          };
+          }));
+          
           const updatedScreenshot: Screenshot = {
             ...screenshot,
             name: screenName,
-            elements: [textElement],
+            elements: textElements,
           };
           updateScreenshot(updatedScreenshot, false);
         });
@@ -301,6 +362,76 @@ export const useStore = create<AppState>()(
         ...localizationTree,
         languages: localizationTree.languages.filter((l) => l.id !== langId),
       },
+    });
+  },
+
+  reAddLocalizationScreens: (langCode: string, screenIndices?: number[]) => {
+    const { localizationTree, createScreenshot, updateScreenshot } = get();
+    if (!localizationTree) return;
+
+    const lang = localizationTree.languages.find((l) => l.code === langCode);
+    if (!lang) return;
+
+    const baseLang = localizationTree.languages.find((l) => l.code === 'en-US') || localizationTree.languages[0];
+    if (!baseLang) return;
+
+    const jsonData = localizationFiles[langCode] || localizationFiles[langCode.replace('-', '_')];
+    const allScreens = jsonData ? Object.entries(jsonData) : baseLang.screens.map(s => [s.name, s.texts] as [string, typeof s.texts]);
+
+    const screensToAdd = screenIndices !== undefined
+      ? screenIndices.map(i => allScreens[i]).filter(Boolean)
+      : allScreens;
+
+    screensToAdd.forEach(([screenName, textDataOrTexts]: [string, any]) => {
+      const screenshot = createScreenshot();
+      
+      let textElements: TextElement[] = [];
+      
+      if (jsonData) {
+        const textEntries = Object.entries(textDataOrTexts);
+        textElements = textEntries.map(([, content], textIndex) => ({
+          id: uuidv4(),
+          type: 'text',
+          content: content as string,
+          x: 100,
+          y: 180 + (textIndex * 60),
+          width: 300,
+          height: 50,
+          fontSize: 24,
+          fontWeight: '600',
+          fontFamily: 'Inter, sans-serif',
+          color: '#ffffff',
+          textAlign: 'center' as const,
+          lineHeight: 1.4,
+          letterSpacing: 0,
+        }));
+      } else {
+        const texts = textDataOrTexts as typeof baseLang.screens[0]['texts'];
+        const textContent = texts?.[0] ? (texts[0].translatedContent?.[langCode] || texts[0].content) : '';
+        textElements = textContent ? [{
+          id: uuidv4(),
+          type: 'text',
+          content: textContent,
+          x: 100,
+          y: 200,
+          width: 300,
+          height: 50,
+          fontSize: 24,
+          fontWeight: '600',
+          fontFamily: 'Inter, sans-serif',
+          color: '#ffffff',
+          textAlign: 'center' as const,
+          lineHeight: 1.4,
+          letterSpacing: 0,
+        }] : [];
+      }
+      
+      const updatedScreenshot: Screenshot = {
+        ...screenshot,
+        name: typeof screenName === 'string' ? screenName : `${lang.name} - ${screenName}`,
+        elements: textElements,
+      };
+      updateScreenshot(updatedScreenshot, false);
     });
   },
 
@@ -465,14 +596,24 @@ export const useStore = create<AppState>()(
   },
   
   deleteScreenshot: (screenshotId) => {
-    const { currentProject, currentScreenshot, createScreenshot } = get();
+    const { currentProject, currentScreenshot } = get();
     if (!currentProject) return;
     
     const updatedScreenshots = currentProject.screenshots.filter(s => s.id !== screenshotId);
     
     if (updatedScreenshots.length === 0) {
-      const newScreenshot = createScreenshot();
-      set({ currentScreenshot: newScreenshot, selectedElements: [] });
+      set((state) => ({
+        projects: state.projects.map(p => 
+          p.id === currentProject.id 
+            ? { ...p, screenshots: [], updatedAt: new Date() } 
+            : p
+        ),
+        currentProject: state.currentProject?.id === currentProject.id 
+          ? { ...state.currentProject, screenshots: [], updatedAt: new Date() } 
+          : state.currentProject,
+        currentScreenshot: null,
+        selectedElements: [],
+      }));
       return;
     }
     
@@ -830,17 +971,45 @@ export const useStore = create<AppState>()(
   pushHistory: () => {
     const { currentProject, history, historyIndex } = get();
     if (!currentProject) return;
-    
+
     const newHistory = history.slice(0, historyIndex + 1);
     newHistory.push([...currentProject.screenshots]);
-    
+
     set({
       history: newHistory.slice(-50),
       historyIndex: newHistory.length - 1,
     });
   },
-  
+
+  saveAsTemplate: (name, category, thumbnail) => {
+    const { currentScreenshot } = get();
+    if (!currentScreenshot) return;
+
+    const newTemplate: TemplateConfig = {
+      id: uuidv4(),
+      name,
+      category,
+      thumbnail,
+      background: currentScreenshot.background,
+      elements: currentScreenshot.elements.map(el => ({ ...el, id: uuidv4() })),
+    };
+
+    const updated = [...get().customTemplates, newTemplate];
+    localStorage.setItem(CUSTOM_TEMPLATES_KEY, JSON.stringify(updated));
+    set({ customTemplates: updated });
+  },
+
+  loadCustomTemplates: () => {
+    try {
+      const stored = localStorage.getItem(CUSTOM_TEMPLATES_KEY);
+      const parsed = stored ? JSON.parse(stored) : [];
+      set({ customTemplates: parsed });
+      return parsed;
+    } catch { return []; }
+  },
+
   saveProjects: () => {
+
     saveToStorage(get().projects);
   },
 }), {

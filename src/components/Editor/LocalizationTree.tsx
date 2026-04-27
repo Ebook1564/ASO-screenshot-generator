@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import { useStore } from '../../store/useStore';
 import {
   ChevronRight,
@@ -49,6 +50,7 @@ interface TreeNodeProps {
   onToggle?: () => void;
   isActive?: boolean;
   onClick?: () => void;
+  onDoubleClick?: () => void;
   actions?: React.ReactNode;
 }
 
@@ -61,6 +63,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   onToggle,
   isActive,
   onClick,
+  onDoubleClick,
   actions,
 }) => {
   return (
@@ -70,6 +73,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           isActive ? 'bg-[#238636]/20 text-[#e6edf3]' : 'text-[#8b949e] hover:bg-[#21262d] hover:text-[#e6edf3]'
         }`}
         onClick={children ? onToggle : onClick}
+        onDoubleClick={onDoubleClick}
       >
         {children && (
           <span className="w-4 h-4 flex items-center justify-center">
@@ -125,14 +129,17 @@ export const countTreeElements = (tree: LocalizationTree) => {
   return { totalScreens, totalImages, totalTexts };
 };
 
-export const LocalizationTreePanel: React.FC = () => {
+export const LocalizationTreePanel: React.FC = () => { 
   const { 
     currentProject, 
     localizationTree, 
     initializeLocalizationTree,
     addLocalizationLanguage,
     removeLocalizationLanguage,
+    reAddLocalizationScreens,
     updateTranslation,
+    createScreenshot,
+    updateScreenshot,
   } = useStore();
   
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
@@ -140,7 +147,40 @@ export const LocalizationTreePanel: React.FC = () => {
   const [editingNode, setEditingNode] = useState<{ id: string; type: string } | null>(null);
   const [editValue, setEditValue] = useState('');
   const [showAddLanguage, setShowAddLanguage] = useState(false);
+  const [showSelectScreens, setShowSelectScreens] = useState<string | null>(null);
+
+  const handleScreenClick = (langCode: string, screen: { id: string; name: string; texts: Array<{ content: string; translatedContent?: Record<string, string> }> }) => {
+    if (!currentProject) return;
+    
+    const screenshot = createScreenshot();
+    
+    const textElements = screen.texts.map((text, index) => ({
+      id: uuidv4(),
+      type: 'text' as const,
+      content: text.translatedContent?.[langCode] || text.content,
+      x: 100,
+      y: 180 + (index * 60),
+      width: 300,
+      height: 50,
+      fontSize: 24,
+      fontWeight: '600',
+      fontFamily: 'Inter, sans-serif',
+      color: '#ffffff',
+      textAlign: 'center' as const,
+      lineHeight: 1.4,
+      letterSpacing: 0,
+    }));
+    
+    const updatedScreenshot = {
+      ...screenshot,
+      name: `${langCode} - ${screen.name}`,
+      elements: textElements,
+    };
+    updateScreenshot(updatedScreenshot, false);
+    setSelectedScreen(screen.id);
+  };
   const [initialized, setInitialized] = useState(false);
+  const [selectedScreens, setSelectedScreens] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (currentProject) {
@@ -172,6 +212,8 @@ export const LocalizationTreePanel: React.FC = () => {
     addLocalizationLanguage(langCode, jsonData || null);
     setShowAddLanguage(false);
   };
+
+  const baseLang = localizationTree?.languages.find(l => l.code === 'en-US') || localizationTree?.languages[0] || null;
 
   const handleRemoveLanguage = (langId: string) => {
     removeLocalizationLanguage(langId);
@@ -386,19 +428,123 @@ export const LocalizationTreePanel: React.FC = () => {
               isOpen={expandedNodes.has(lang.id)}
               onToggle={() => toggleNode(lang.id)}
               actions={
-                localizationTree.languages.length > 1 && (
-                  <SmallActionButton
-                    icon={<Trash2 className="w-3 h-3 text-[#f85149]" />}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRemoveLanguage(lang.id);
-                    }}
-                    title="Remove Language"
-                  />
-                )
+                <div className="flex items-center gap-1">
+                  {lang.screens.length === 0 && (
+                    <SmallActionButton
+                      icon={<Plus className="w-3 h-3 text-[#58a6ff]" />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        reAddLocalizationScreens(lang.code);
+                      }}
+                      title="Re-add Screens"
+                    />
+                  )}
+                  {localizationTree.languages.length > 1 && (
+                    <SmallActionButton
+                      icon={<Trash2 className="w-3 h-3 text-[#f85149]" />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveLanguage(lang.id);
+                      }}
+                      title="Remove Language"
+                    />
+                  )}
+                </div>
               }
             >
-              {lang.screens.map((screen) => (
+              {showSelectScreens === lang.code || lang.screens.length === 0 ? (
+                <div className="ml-4 p-2 space-y-2">
+                  {showSelectScreens === lang.code && baseLang ? (
+                    <>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs text-[#8b949e]">Select screens to add:</span>
+                        <button
+                          onClick={() => setShowSelectScreens(null)}
+                          className="text-xs text-[#f85149] hover:underline"
+                        >
+                          Close
+                        </button>
+                      </div>
+                      <div className="flex gap-2 mb-2">
+                        <button
+                          onClick={() => setSelectedScreens(new Set(baseLang.screens.map((_, i) => i)))}
+                          className="text-xs text-[#58a6ff] hover:underline"
+                        >
+                          All
+                        </button>
+                        <button
+                          onClick={() => setSelectedScreens(new Set())}
+                          className="text-xs text-[#58a6ff] hover:underline"
+                        >
+                          None
+                        </button>
+                      </div>
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {baseLang.screens.map((screen, i) => (
+                          <label
+                            key={screen.id}
+                            className="flex items-center gap-2 p-1 hover:bg-[#21262d] rounded cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedScreens.has(i)}
+                              onChange={(e) => {
+                                const newSet = new Set(selectedScreens);
+                                if (e.target.checked) {
+                                  newSet.add(i);
+                                } else {
+                                  newSet.delete(i);
+                                }
+                                setSelectedScreens(newSet);
+                              }}
+                              className="w-3 h-3"
+                            />
+                            <span className="text-xs text-[#e6edf3]">{screen.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => {
+                          const indices = Array.from(selectedScreens);
+                          console.log('Adding screens:', lang.code, indices);
+                          if (indices.length > 0) {
+                            reAddLocalizationScreens(lang.code, indices);
+                          }
+                          setShowSelectScreens(null);
+                          setSelectedScreens(new Set());
+                        }}
+                        className="w-full px-2 py-1 bg-[#238636] hover:bg-[#2ea043] rounded text-xs text-white mt-2"
+                      >
+                        Add Selected ({selectedScreens.size})
+                      </button>
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          if (baseLang) {
+                            setShowSelectScreens(lang.code);
+                            setSelectedScreens(new Set(baseLang.screens.map((_, i) => i)));
+                          }
+                        }}
+                        className="px-2 py-1 bg-[#21262d] hover:bg-[#30363d] rounded text-xs text-[#58a6ff]"
+                      >
+                        + Add Screens
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (baseLang) {
+                            reAddLocalizationScreens(lang.code);
+                          }
+                        }}
+                        className="px-2 py-1 bg-[#238636] hover:bg-[#2ea043] rounded text-xs text-white"
+                      >
+                        Add All
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : lang.screens.map((screen) => (
                 <div key={screen.id}>
                   <TreeNode
                     label={screen.name}
@@ -408,6 +554,7 @@ export const LocalizationTreePanel: React.FC = () => {
                     onToggle={() => toggleNode(screen.id)}
                     isActive={selectedScreen === screen.id}
                     onClick={() => setSelectedScreen(screen.id)}
+                    onDoubleClick={() => handleScreenClick(lang.code, screen)}
                   >
                     {/* Images */}
                     {screen.images.length > 0 && (

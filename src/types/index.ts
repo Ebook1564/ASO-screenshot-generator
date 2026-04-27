@@ -65,7 +65,7 @@ export interface ImageElement {
 
 export type DeviceOrientation = 'portrait' | 'landscape-left' | 'landscape-right';
 
-export type DeviceRenderMode = '2d' | '3d';
+export type DeviceRenderMode = '2d' | '3d' | 'realistic';
 
 export interface DeviceElement {
   id: string;
@@ -81,6 +81,9 @@ export interface DeviceElement {
   orientation: DeviceOrientation;
   renderMode: DeviceRenderMode;
   cameraAngle?: 'front' | 'tilt-left' | 'tilt-right' | 'isometric';
+  screenshotScale?: number;
+  screenshotOffsetX?: number;
+  screenshotOffsetY?: number;
 }
 
 export interface ShapeElement {
