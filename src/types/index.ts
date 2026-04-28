@@ -50,6 +50,7 @@ export interface TextElement {
   textAlign: 'left' | 'center' | 'right';
   lineHeight: number;
   letterSpacing: number;
+  autoFit?: boolean;
 }
 
 export interface ImageElement {
@@ -108,6 +109,7 @@ export interface Screenshot {
   elements: CanvasElement[];
   background: Background;
   order: number;
+  screenshotGroupId?: string;
 }
 
 export interface GradientColorStop {
@@ -274,6 +276,14 @@ export interface LocalizationTree {
   name: string;
   baseLanguage: string;
   languages: LanguageNode[];
+}
+
+export interface SavedComponent {
+  id: string;
+  name: string;
+  elements: CanvasElement[];
+  thumbnail?: string;
+  createdAt: string;
 }
 
 export const SUPPORTED_LANGUAGES = [

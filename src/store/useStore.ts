@@ -1,16 +1,18 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import { Project, Screenshot, CanvasElement, Platform, Background, IOS_SIZES, ANDROID_SIZES, LocalizationTree, TextElementNode, ImageElementNode, ScreenNode, LanguageNode, SUPPORTED_LANGUAGES, TextElement, DeviceElement } from '../types';
+import { Project, Screenshot, CanvasElement, Platform, Background, IOS_SIZES, ANDROID_SIZES, LocalizationTree, TextElementNode, ImageElementNode, ScreenNode, LanguageNode, SUPPORTED_LANGUAGES, TextElement, SavedComponent } from '../types';
 import { TemplateConfig } from '../data/templates';
 import { localizationFiles } from '../data/localization';
 
 const STORAGE_KEY = 'aso-screenshot-studio';
+const CUSTOM_TEMPLATES_KEY = 'aso-custom-templates';
+const SAVED_COMPONENTS_KEY = 'aso-saved-components';
 
 interface AppState {
   projects: Project[];
   currentProject: Project | null;
-  
+
   currentScreenshot: Screenshot | null;
   selectedElements: CanvasElement[];
   clipboard: CanvasElement[];
@@ -21,15 +23,18 @@ interface AppState {
   showGrid: boolean;
   gridSize: number;
   zoom: number;
-  
+
   history: Screenshot[][];
   historyIndex: number;
-  
+
   view: 'dashboard' | 'editor';
-  leftSidebarTab: 'templates' | 'assets' | 'icons' | 'text-styles' | 'backgrounds' | 'localization' | 'realistic-devices';
-  
+  leftSidebarTab: 'templates' | 'assets' | 'icons' | 'text-styles' | 'backgrounds' | 'localization' | 'realistic-devices' | 'components';
+  uiMode: 'simple' | 'advanced';
+  panoramicMode: boolean;
+
   localizationTree: LocalizationTree | null;
   customTemplates: TemplateConfig[];
+  savedComponents: SavedComponent[];
   
   generateLocalizationTreeFromStore: () => LocalizationTree | null;
   initializeLocalizationTree: () => LocalizationTree | null;
@@ -138,10 +143,13 @@ export const useStore = create<AppState>()(
       zoom: 0.35,
       history: [],
       historyIndex: -1,
-      view: 'dashboard',
-      leftSidebarTab: 'templates',
-      localizationTree: null,
-      customTemplates: [],
+  view: 'dashboard',
+  leftSidebarTab: 'templates',
+  uiMode: 'simple' as 'simple' | 'advanced',
+  panoramicMode: true,
+  localizationTree: null,
+  customTemplates: [],
+  savedComponents: [],
       
       generateLocalizationTreeFromStore: () => {
     const { currentProject } = get();
@@ -539,28 +547,54 @@ export const useStore = create<AppState>()(
     });
   },
   
-  createScreenshot: () => {
+  createScreenshot: (groupIdToJoin?: string) => {
     const { currentProject, updateProject } = get();
     if (!currentProject) throw new Error('No project selected');
-    
+
     const screenshot: Screenshot = {
       id: uuidv4(),
       name: `Screen ${currentProject.screenshots.length + 1}`,
       elements: [],
       background: createDefaultBackground(),
       order: currentProject.screenshots.length,
+      screenshotGroupId: groupIdToJoin,
     };
-    
+
     const updatedProject = {
       ...currentProject,
       screenshots: [...currentProject.screenshots, screenshot],
       updatedAt: new Date(),
     };
-    
+
     updateProject(updatedProject);
     set({ currentScreenshot: screenshot, selectedElements: [] });
-    
+
     return screenshot;
+  },
+
+  syncScreenshotProperties: (sourceScreenshotId: string, targetScreenshotIds: string[]) => {
+    const { currentProject, updateProject } = get();
+    if (!currentProject) return;
+
+    const source = currentProject.screenshots.find(s => s.id === sourceScreenshotId);
+    if (!source) return;
+
+    const updatedScreenshots = currentProject.screenshots.map(s => {
+      if (s.id === sourceScreenshotId || !targetScreenshotIds.includes(s.id)) return s;
+      return {
+        ...s,
+        background: { ...source.background },
+        elements: source.elements.map(el => ({ ...el, id: uuidv4() })),
+      };
+    });
+
+    const updatedProject = {
+      ...currentProject,
+      screenshots: updatedScreenshots,
+      updatedAt: new Date(),
+    };
+
+    updateProject(updatedProject);
   },
   
   setCurrentScreenshot: (screenshot) => {
@@ -675,18 +709,23 @@ export const useStore = create<AppState>()(
   },
   
   addElement: (element) => {
-    const { currentScreenshot, updateScreenshot, pushHistory } = get();
+    const { currentScreenshot, updateScreenshot, pushHistory, uiMode } = get();
     if (!currentScreenshot) return;
-    
+
     pushHistory();
-    
+
+    // In simple mode, autoFit is OFF by default for text elements
+    const elementWithDefaults = element.type === 'text' && !(element as any).autoFit
+      ? { ...element, autoFit: uiMode === 'advanced' }
+      : element;
+
     const updatedScreenshot = {
       ...currentScreenshot,
-      elements: [...currentScreenshot.elements, element],
+      elements: [...currentScreenshot.elements, elementWithDefaults],
     };
-    
+
     updateScreenshot(updatedScreenshot, false);
-    set({ selectedElements: [element] });
+    set({ selectedElements: [elementWithDefaults] });
   },
   
   addElements: (elements) => {
@@ -919,9 +958,38 @@ export const useStore = create<AppState>()(
   setView: (view) => {
     set({ view });
   },
-  
-  setLeftSidebarTab: (tab) => {
-    set({ leftSidebarTab: tab as any });
+
+  setUiMode: (mode: 'simple' | 'advanced') => {
+    set({ uiMode: mode });
+  },
+
+  setPanoramicMode: (enabled: boolean) => {
+    set({ panoramicMode: enabled });
+  },
+
+  setLeftSidebarTab: (tab: 'templates' | 'assets' | 'icons' | 'text-styles' | 'backgrounds' | 'localization' | 'realistic-devices' | 'components') => {
+    set({ leftSidebarTab: tab });
+  },
+
+  saveComponent: (component: SavedComponent) => {
+    const updated = [...get().savedComponents, component];
+    localStorage.setItem(SAVED_COMPONENTS_KEY, JSON.stringify(updated));
+    set({ savedComponents: updated });
+  },
+
+  loadSavedComponents: () => {
+    try {
+      const stored = localStorage.getItem(SAVED_COMPONENTS_KEY);
+      const parsed = stored ? JSON.parse(stored) : [];
+      set({ savedComponents: parsed });
+      return parsed;
+    } catch { return []; }
+  },
+
+  deleteSavedComponent: (componentId: string) => {
+    const updated = get().savedComponents.filter(c => c.id !== componentId);
+    localStorage.setItem(SAVED_COMPONENTS_KEY, JSON.stringify(updated));
+    set({ savedComponents: updated });
   },
   
   undo: () => {
@@ -981,7 +1049,7 @@ export const useStore = create<AppState>()(
     });
   },
 
-  saveAsTemplate: (name, category, thumbnail) => {
+  saveAsTemplate: (name: string, category: TemplateConfig['category'], thumbnail: string) => {
     const { currentScreenshot } = get();
     if (!currentScreenshot) return;
 
@@ -1012,7 +1080,7 @@ export const useStore = create<AppState>()(
 
     saveToStorage(get().projects);
   },
-}), {
+  }), {
   name: STORAGE_KEY,
-  partialize: (state) => ({ projects: state.projects }),
+  partialize: (state) => ({ projects: state.projects, uiMode: state.uiMode, panoramicMode: state.panoramicMode }),
 }));

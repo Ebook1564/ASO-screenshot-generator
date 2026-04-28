@@ -2,10 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { Platform, Project } from '../types';
 import { TEMPLATES } from '../data/templates';
-import { 
-  Plus, 
-  Smartphone, 
-  Trash2, 
+import { Tooltip } from './Editor/Tooltip';
+import { AddScreenshotDialog } from './AddScreenshotDialog';
+import {
+  Plus,
+  Smartphone,
+  Trash2,
   Apple,
   Layers,
   Zap,
@@ -15,6 +17,7 @@ import {
   Pencil,
   Check,
   X,
+  Star,
 } from 'lucide-react';
 
 export const Dashboard: React.FC = () => {
@@ -35,6 +38,7 @@ export const Dashboard: React.FC = () => {
   const [newProjectName, setNewProjectName] = useState('');
   const [newAppName, setNewAppName] = useState('');
   const [newPlatform, setNewPlatform] = useState<Platform>('ios');
+  const [showAddScreenshotDialog, setShowAddScreenshotDialog] = useState<string | null>(null);
   
   const [editingProject, setEditingProject] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
@@ -97,13 +101,15 @@ export const Dashboard: React.FC = () => {
               <p className="text-xs text-[#8b949e]">ASO-Optimized Screenshot Generator</p>
             </div>
           </div>
-          <button
-            onClick={() => setShowNewProjectModal(true)}
-            className="px-4 py-2 bg-[#238636] hover:bg-[#2ea043] text-white rounded-lg font-medium flex items-center gap-2 transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            New Project
-          </button>
+          <Tooltip text="Create a new screenshot project">
+            <button
+              onClick={() => setShowNewProjectModal(true)}
+              className="px-4 py-2 bg-[#238636] hover:bg-[#2ea043] text-white rounded-lg font-medium flex items-center gap-2 transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              New Project
+            </button>
+          </Tooltip>
         </div>
       </header>
 
@@ -121,13 +127,15 @@ export const Dashboard: React.FC = () => {
               Design professional screenshots for the App Store and Google Play in minutes. 
               Optimized for conversions, built for speed.
             </p>
-            <button
-              onClick={() => setShowNewProjectModal(true)}
-              className="px-8 py-4 bg-[#238636] hover:bg-[#2ea043] text-white rounded-xl font-semibold text-lg flex items-center gap-3 mx-auto transition-all"
-            >
-              <Plus className="w-5 h-5" />
-              Create Your First Screenshot Set
-            </button>
+            <Tooltip text="Start your first project">
+              <button
+                onClick={() => setShowNewProjectModal(true)}
+                className="px-8 py-4 bg-[#238636] hover:bg-[#2ea043] text-white rounded-xl font-semibold text-lg flex items-center gap-3 mx-auto transition-all"
+              >
+                <Plus className="w-5 h-5" />
+                Create Your First Screenshot Set
+              </button>
+            </Tooltip>
 
             {/* Features Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-16">
@@ -161,22 +169,32 @@ export const Dashboard: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {/* New Project Card */}
-              <button
-                onClick={() => setShowNewProjectModal(true)}
-                className="h-64 border-2 border-dashed border-[#30363d] rounded-2xl flex flex-col items-center justify-center gap-4 hover:border-[#238636] hover:bg-[#238636]/5 transition-all group"
-              >
-                <div className="w-14 h-14 rounded-full bg-[#21262d] group-hover:bg-[#238636]/20 flex items-center justify-center transition-all">
-                  <Plus className="w-7 h-7 text-[#8b949e] group-hover:text-[#238636]" />
-                </div>
-                <span className="text-[#8b949e] group-hover:text-[#238636] font-medium">Create New Project</span>
-              </button>
+              <Tooltip text="Create a new project from scratch">
+                <button
+                  onClick={() => setShowNewProjectModal(true)}
+                  className="h-64 border-2 border-dashed border-[#30363d] rounded-2xl flex flex-col items-center justify-center gap-4 hover:border-[#238636] hover:bg-[#238636]/5 transition-all group w-full"
+                >
+                  <div className="w-14 h-14 rounded-full bg-[#21262d] group-hover:bg-[#238636]/20 flex items-center justify-center transition-all">
+                    <Plus className="w-7 h-7 text-[#8b949e] group-hover:text-[#238636]" />
+                  </div>
+                  <span className="text-[#8b949e] group-hover:text-[#238636] font-medium">Create New Project</span>
+                </button>
+              </Tooltip>
 
-              {/* Project Cards */}
+               {/* Project Cards */}
               {projects.map((project) => (
                 <div
                   key={project.id}
                   className="h-64 bg-[#161b22] border border-[#30363d] rounded-2xl overflow-hidden hover:border-[#238636]/50 transition-all cursor-pointer group"
-                  onClick={() => editingProject !== project.id && setCurrentProject(project)}
+                  onClick={(e) => {
+                    if (editingProject !== project.id) {
+                      if (showAddScreenshotDialog === project.id) {
+                        setShowAddScreenshotDialog(null);
+                      } else {
+                        setCurrentProject(project);
+                      }
+                    }
+                  }}
                 >
                   {/* Preview Area */}
                   <div className="h-40 bg-[#21262d] flex items-center justify-center relative">
@@ -193,26 +211,30 @@ export const Dashboard: React.FC = () => {
                     
                     {/* Actions */}
                     <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          startEditProject(project);
-                        }}
-                        className="p-2 bg-[#0d1117]/80 rounded-lg hover:bg-[#238636]/20 transition-colors"
-                      >
-                        <Pencil className="w-4 h-4 text-[#8b949e] hover:text-[#238636]" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (confirm('Delete this project?')) {
-                            deleteProject(project.id);
-                          }
-                        }}
-                        className="p-2 bg-[#0d1117]/80 rounded-lg hover:bg-red-500/20 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4 text-[#8b949e] hover:text-red-400" />
-                      </button>
+                      <Tooltip text="Edit project details">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            startEditProject(project);
+                          }}
+                          className="p-2 bg-[#0d1117]/80 rounded-lg hover:bg-[#238636]/20 transition-colors"
+                        >
+                          <Pencil className="w-4 h-4 text-[#8b949e] hover:text-[#238636]" />
+                        </button>
+                      </Tooltip>
+                      <Tooltip text="Delete this project">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm('Delete this project?')) {
+                              deleteProject(project.id);
+                            }
+                          }}
+                          className="p-2 bg-[#0d1117]/80 rounded-lg hover:bg-red-500/20 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4 text-[#8b949e] hover:text-red-400" />
+                        </button>
+                      </Tooltip>
                     </div>
                   </div>
 
@@ -414,6 +436,14 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Add Screenshot Dialog */}
+      {showAddScreenshotDialog && (
+        <AddScreenshotDialog
+          projectId={showAddScreenshotDialog}
+          onClose={() => setShowAddScreenshotDialog(null)}
+        />
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useStore } from '../../store/useStore';
 import { IOS_SIZES, ANDROID_SIZES } from '../../types';
+import { Tooltip } from './Tooltip';
 import {
   Undo2,
   Redo2,
@@ -20,6 +21,9 @@ import {
   PanelRight,
   LayoutTemplate,
   Save,
+  CheckSquare,
+  SlidersHorizontal,
+  Grid2X2,
 } from 'lucide-react';
 
 interface TopToolbarProps {
@@ -60,6 +64,10 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
     currentScreenshot,
     pushHistory,
     saveAsTemplate,
+    uiMode,
+    setUiMode,
+    panoramicMode,
+    setPanoramicMode,
   } = useStore();
 
   const sizes = currentPlatform === 'ios' ? IOS_SIZES : ANDROID_SIZES;
@@ -77,14 +85,15 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
       {/* Left Section */}
       <div className="flex items-center gap-3">
         {/* Back to Dashboard */}
-        <button
-          onClick={() => setView('dashboard')}
-          className="p-2 rounded-md transition-colors hover:bg-[#21262d]"
-          title="Back to Dashboard"
-          style={{ color: '#8b949e' }}
-        >
-          <Home className="w-[18px] h-[18px]" />
-        </button>
+        <Tooltip text="Back to Dashboard">
+          <button
+            onClick={() => setView('dashboard')}
+            className="p-2 rounded-md transition-colors hover:bg-[#21262d]"
+            style={{ color: '#8b949e' }}
+          >
+            <Home className="w-[18px] h-[18px]" />
+          </button>
+        </Tooltip>
 
         <div className="w-px h-5" style={{ backgroundColor: '#30363d' }} />
 
@@ -98,78 +107,104 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
 
         {/* Undo/Redo */}
         <div className="flex items-center gap-1">
-          <button
-            onClick={undo}
-            className="p-1.5 rounded-md transition-colors hover:bg-[#21262d]"
-            title="Undo (Ctrl+Z)"
-            style={{ color: '#8b949e' }}
-          >
-            <Undo2 className="w-4 h-4" />
-          </button>
-          <button
-            onClick={redo}
-            className="p-1.5 rounded-md transition-colors hover:bg-[#21262d]"
-            title="Redo (Ctrl+Y)"
-            style={{ color: '#8b949e' }}
-          >
-            <Redo2 className="w-4 h-4" />
-          </button>
+          <Tooltip text="Undo (Ctrl+Z)">
+            <button
+              onClick={undo}
+              className="p-1.5 rounded-md transition-colors hover:bg-[#21262d]"
+              style={{ color: '#8b949e' }}
+            >
+              <Undo2 className="w-4 h-4" />
+            </button>
+          </Tooltip>
+          <Tooltip text="Redo (Ctrl+Y)">
+            <button
+              onClick={redo}
+              className="p-1.5 rounded-md transition-colors hover:bg-[#21262d]"
+              style={{ color: '#8b949e' }}
+            >
+              <Redo2 className="w-4 h-4" />
+            </button>
+          </Tooltip>
         </div>
 
         <div className="w-px h-5" style={{ backgroundColor: '#30363d' }} />
 
         {/* Duplicate */}
-        <button
-          onClick={handleDuplicate}
-          className="p-1.5 rounded-md transition-colors hover:bg-[#21262d]"
-          title="Duplicate Screen"
-          style={{ color: '#8b949e' }}
-        >
-          <Copy className="w-4 h-4" />
-        </button>
+        <Tooltip text="Duplicate Screen">
+          <button
+            onClick={handleDuplicate}
+            className="p-1.5 rounded-md transition-colors hover:bg-[#21262d]"
+            style={{ color: '#8b949e' }}
+          >
+            <Copy className="w-4 h-4" />
+          </button>
+        </Tooltip>
+
+        {/* Sync Properties */}
+        {currentScreenshot?.screenshotGroupId && currentProject?.screenshots.filter(s => (s as any).screenshotGroupId === currentScreenshot.screenshotGroupId).length > 1 && (
+          <Tooltip text="Sync properties to group">
+            <button
+              onClick={() => {
+                const groupId = currentScreenshot.screenshotGroupId;
+                const groupScreens = currentProject.screenshots.filter(s => (s as any).screenshotGroupId === groupId);
+                const { syncScreenshotProperties } = useStore.getState();
+                syncScreenshotProperties(currentScreenshot.id, groupScreens.map(s => s.id));
+              }}
+              className="p-1.5 rounded-md transition-colors hover:bg-[#21262d]"
+              style={{ color: '#1f6feb' }}
+            >
+              <Layers className="w-4 h-4" />
+            </button>
+          </Tooltip>
+        )}
 
         <div className="w-px h-5" style={{ backgroundColor: '#30363d' }} />
 
         {/* Save as Template */}
-        <button
-          onClick={() => {
-            const name = prompt('Template Name:');
-            if (name) saveAsTemplate(name, 'custom', '');
-          }}
-          className="p-1.5 rounded-md transition-colors hover:bg-[#21262d]"
-          title="Save as Template"
-          style={{ color: '#8b949e' }}
-        >
-          <LayoutTemplate className="w-4 h-4" />
-        </button>
+        <Tooltip text="Save as Template">
+          <button
+            onClick={() => {
+              const name = prompt('Template Name:');
+              if (name) saveAsTemplate(name, 'creative', '');
+            }}
+            className="p-1.5 rounded-md transition-colors hover:bg-[#21262d]"
+            style={{ color: '#8b949e' }}
+          >
+            <LayoutTemplate className="w-4 h-4" />
+          </button>
+        </Tooltip>
       </div>
 
       {/* Center Section - Platform & Size Selector */}
       <div className="flex items-center gap-3">
         {/* Platform Toggle */}
         <div className="flex items-center rounded-md p-0.5" style={{ backgroundColor: '#0d1117' }}>
-          <button
-            onClick={() => setCurrentPlatform('ios')}
-            className={`px-3 py-1 rounded-md flex items-center gap-2 text-sm font-medium transition-all ${
-              currentPlatform === 'ios'
-                ? 'bg-[#238636] text-white'
-                : 'text-[#8b949e] hover:text-white'
-            }`}
-          >
-            <Apple className="w-4 h-4" />
-            iOS
-          </button>
-          <button
-            onClick={() => setCurrentPlatform('android')}
-            className={`px-3 py-1 rounded-md flex items-center gap-2 text-sm font-medium transition-all ${
-              currentPlatform === 'android'
-                ? 'bg-[#238636] text-white'
-                : 'text-[#8b949e] hover:text-white'
-            }`}
-          >
-            <Smartphone className="w-4 h-4" />
-            Android
-          </button>
+          <Tooltip text="Switch to iOS">
+            <button
+              onClick={() => setCurrentPlatform('ios')}
+              className={`px-3 py-1 rounded-md flex items-center gap-2 text-sm font-medium transition-all ${
+                currentPlatform === 'ios'
+                  ? 'bg-[#238636] text-white'
+                  : 'text-[#8b949e] hover:text-white'
+              }`}
+            >
+              <Apple className="w-4 h-4" />
+              iOS
+            </button>
+          </Tooltip>
+          <Tooltip text="Switch to Android">
+            <button
+              onClick={() => setCurrentPlatform('android')}
+              className={`px-3 py-1 rounded-md flex items-center gap-2 text-sm font-medium transition-all ${
+                currentPlatform === 'android'
+                  ? 'bg-[#238636] text-white'
+                  : 'text-[#8b949e] hover:text-white'
+              }`}
+            >
+              <Smartphone className="w-4 h-4" />
+              Android
+            </button>
+          </Tooltip>
         </div>
 
         {/* Size Selector */}
@@ -202,39 +237,43 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
       <div className="flex items-center gap-2">
         {/* Panel Toggles */}
         <div className="flex items-center gap-0.5 rounded-md p-0.5" style={{ backgroundColor: '#0d1117' }}>
-          <button
-            onClick={onToggleFilmstrip}
-            className={`p-1.5 rounded transition-colors ${
-              showFilmstrip ? 'text-white' : 'text-[#8b949e]'
-            }`}
-            style={showFilmstrip ? { backgroundColor: '#1f6feb' } : {}}
-            title="Toggle Screens Panel (Ctrl+I)"
-          >
-            <Film className="w-4 h-4" />
-          </button>
-          <button
-            onClick={onToggleRightSidebar}
-            className={`p-1.5 rounded transition-colors ${
-              showRightSidebar ? 'text-white' : 'text-[#8b949e]'
-            }`}
-            style={showRightSidebar ? { backgroundColor: '#1f6feb' } : {}}
-            title="Toggle Properties Panel"
-          >
-            <PanelRight className="w-4 h-4" />
-          </button>
+          <Tooltip text="Toggle Screens Panel">
+            <button
+              onClick={onToggleFilmstrip}
+              className={`p-1.5 rounded transition-colors ${
+                showFilmstrip ? 'text-white' : 'text-[#8b949e]'
+              }`}
+              style={showFilmstrip ? { backgroundColor: '#1f6feb' } : {}}
+            >
+              <Film className="w-4 h-4" />
+            </button>
+          </Tooltip>
+          <Tooltip text="Toggle Properties Panel">
+            <button
+              onClick={onToggleRightSidebar}
+              className={`p-1.5 rounded transition-colors ${
+                showRightSidebar ? 'text-white' : 'text-[#8b949e]'
+              }`}
+              style={showRightSidebar ? { backgroundColor: '#1f6feb' } : {}}
+            >
+              <PanelRight className="w-4 h-4" />
+            </button>
+          </Tooltip>
         </div>
 
         <div className="w-px h-5" style={{ backgroundColor: '#30363d' }} />
 
-        {/* Zoom */}
+        {/* Zoom Controls */}
         <div className="flex items-center gap-1 rounded-md px-2 py-1" style={{ backgroundColor: '#0d1117' }}>
-          <button
-            onClick={() => setZoom(zoom - 0.1)}
-            className="p-1 rounded transition-colors hover:bg-[#21262d]"
-            style={{ color: '#8b949e' }}
-          >
-            <ZoomOut className="w-3.5 h-3.5" />
-          </button>
+          <Tooltip text="Zoom Out">
+            <button
+              onClick={() => setZoom(zoom - 0.1)}
+              className="p-1 rounded transition-colors hover:bg-[#21262d]"
+              style={{ color: '#8b949e' }}
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
+            </button>
+          </Tooltip>
           <input
             type="range"
             min="10"
@@ -244,59 +283,89 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
             className="w-16 h-1 rounded-lg appearance-none cursor-pointer"
             style={{ backgroundColor: '#30363d', accentColor: '#1f6feb' }}
           />
-          <button
-            onClick={() => setZoom(zoom + 0.1)}
-            className="p-1 rounded transition-colors hover:bg-[#21262d]"
-            style={{ color: '#8b949e' }}
-          >
-            <ZoomIn className="w-3.5 h-3.5" />
-          </button>
+          <Tooltip text="Zoom In">
+            <button
+              onClick={() => setZoom(zoom + 0.1)}
+              className="p-1 rounded transition-colors hover:bg-[#21262d]"
+              style={{ color: '#8b949e' }}
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </button>
+          </Tooltip>
           <span className="text-xs w-10 text-center" style={{ color: '#8b949e' }}>
             {Math.round(zoom * 100)}%
           </span>
         </div>
 
         {/* Grid Toggle */}
-        <button
-          onClick={() => setShowGrid(!showGrid)}
-          className="p-1.5 rounded-md transition-colors"
-          style={showGrid ? { backgroundColor: 'rgba(31, 111, 235, 0.2)', color: '#1f6feb' } : { color: '#8b949e' }}
-          title="Toggle Grid (Snap)"
-        >
-          <Magnet className="w-4 h-4" />
-        </button>
+        <Tooltip text="Toggle grid alignment">
+          <button
+            onClick={() => setShowGrid(!showGrid)}
+            className="p-1.5 rounded-md transition-colors"
+            style={showGrid ? { backgroundColor: 'rgba(31, 111, 235, 0.2)', color: '#1f6feb' } : { color: '#8b949e' }}
+          >
+            <Magnet className="w-4 h-4" />
+          </button>
+        </Tooltip>
 
-        {/* Safe Areas Toggle */}
-        <button
-          onClick={() => setShowSafeAreas(!showSafeAreas)}
-          className="p-1.5 rounded-md transition-colors"
-          style={showSafeAreas ? { backgroundColor: 'rgba(31, 111, 235, 0.2)', color: '#1f6feb' } : { color: '#8b949e' }}
-          title="Toggle Safe Areas"
-        >
-          <Grid3X3 className="w-4 h-4" />
-        </button>
+        {/* Panoramic Mode Toggle */}
+        <Tooltip text="Toggle panoramic edge-to-edge snap">
+          <button
+            onClick={() => setPanoramicMode(!panoramicMode)}
+            className="p-1.5 rounded-md transition-colors"
+            style={panoramicMode ? { backgroundColor: 'rgba(31, 111, 235, 0.2)', color: '#1f6feb' } : { color: '#8b949e' }}
+          >
+            <Grid2X2 className="w-4 h-4" />
+          </button>
+        </Tooltip>
+
+        {/* Design Audit Toggle */}
+        <Tooltip text="Show ASO safe zones">
+          <button
+            onClick={() => setShowSafeAreas(!showSafeAreas)}
+            className="p-1.5 rounded-md transition-colors"
+            style={showSafeAreas ? { backgroundColor: 'rgba(31, 111, 235, 0.2)', color: '#1f6feb' } : { color: '#8b949e' }}
+          >
+            <CheckSquare className="w-4 h-4" />
+          </button>
+        </Tooltip>
+
+        {/* UI Mode Toggle */}
+        <Tooltip text={uiMode === 'simple' ? 'Switch to Advanced mode' : 'Switch to Simple mode'}>
+          <button
+            onClick={() => setUiMode(uiMode === 'simple' ? 'advanced' : 'simple')}
+            className="p-1.5 rounded-md transition-colors flex items-center gap-1"
+            style={uiMode === 'advanced' ? { backgroundColor: 'rgba(31, 111, 235, 0.2)', color: '#1f6feb' } : { color: '#8b949e' }}
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            <span className="text-xs">{uiMode === 'simple' ? 'Simple' : 'Advanced'}</span>
+          </button>
+        </Tooltip>
 
         {/* Preview */}
-        <button
-          onClick={onPreview}
-          className="p-1.5 rounded-md transition-colors hover:bg-[#21262d]"
-          title="Store Preview"
-          style={{ color: '#8b949e' }}
-        >
-          <Eye className="w-4 h-4" />
-        </button>
+        <Tooltip text="Store Preview">
+          <button
+            onClick={onPreview}
+            className="p-1.5 rounded-md transition-colors hover:bg-[#21262d]"
+            style={{ color: '#8b949e' }}
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+        </Tooltip>
 
         <div className="w-px h-5" style={{ backgroundColor: '#30363d' }} />
 
         {/* Export */}
-        <button 
-          onClick={onExport}
-          className="px-4 py-1.5 rounded-md font-medium flex items-center gap-2 text-sm transition-all hover:brightness-110"
-          style={{ backgroundColor: '#238636', color: 'white' }}
-        >
-          <Download className="w-4 h-4" />
-          Export
-        </button>
+        <Tooltip text="Export your screenshots">
+          <button 
+            onClick={onExport}
+            className="px-4 py-1.5 rounded-md font-medium flex items-center gap-2 text-sm transition-all hover:brightness-110"
+            style={{ backgroundColor: '#238636', color: 'white' }}
+          >
+            <Download className="w-4 h-4" />
+            Export
+          </button>
+        </Tooltip>
       </div>
     </div>
   );

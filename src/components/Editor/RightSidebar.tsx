@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { TextElement, DeviceElement, ShapeElement, ImageElement } from '../../types';
+import { Tooltip } from './Tooltip';
+import { Accordion } from '../ui/Accordion';
 import {
   Type,
   AlignLeft,
@@ -17,6 +19,7 @@ import {
   Image as ImageIcon,
   Square,
   Sparkles,
+  Check,
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -61,6 +64,7 @@ export const RightSidebar: React.FC = () => {
     addElement,
     currentScreenshot,
     pushHistory,
+    uiMode,
   } = useStore();
 
   const [showAISuggestions, setShowAISuggestions] = useState(false);
@@ -106,40 +110,46 @@ export const RightSidebar: React.FC = () => {
         </div>
         <div className="p-4 space-y-2" style={{ borderTop: '1px solid #30363d' }}>
           <div className="flex gap-2">
-            <button
-              onClick={() => {
-                pushHistory();
-                selectedElements.forEach(el => bringToFront(el.id));
-              }}
-              className="flex-1 px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors"
-              style={{ backgroundColor: '#21262d', color: '#c9d1d9' }}
-            >
-              <ChevronsUp className="w-4 h-4" />
-              To Front
-            </button>
-            <button
-              onClick={() => {
-                pushHistory();
-                selectedElements.forEach(el => sendToBack(el.id));
-              }}
-              className="flex-1 px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors"
-              style={{ backgroundColor: '#21262d', color: '#c9d1d9' }}
-            >
-              <ChevronsDown className="w-4 h-4" />
-              To Back
-            </button>
+            <Tooltip text="Bring all selected to front">
+              <button
+                onClick={() => {
+                  pushHistory();
+                  selectedElements.forEach(el => bringToFront(el.id));
+                }}
+                className="flex-1 px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors w-full"
+                style={{ backgroundColor: '#21262d', color: '#c9d1d9' }}
+              >
+                <ChevronsUp className="w-4 h-4" />
+                To Front
+              </button>
+            </Tooltip>
+            <Tooltip text="Send all selected to back">
+              <button
+                onClick={() => {
+                  pushHistory();
+                  selectedElements.forEach(el => sendToBack(el.id));
+                }}
+                className="flex-1 px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors w-full"
+                style={{ backgroundColor: '#21262d', color: '#c9d1d9' }}
+              >
+                <ChevronsDown className="w-4 h-4" />
+                To Back
+              </button>
+            </Tooltip>
           </div>
-          <button
-            onClick={() => {
-              pushHistory();
-              deleteSelectedElements();
-            }}
-            className="w-full px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors"
-            style={{ backgroundColor: 'rgba(248, 81, 73, 0.1)', color: '#f85149' }}
-          >
-            <Trash2 className="w-4 h-4" />
-            Delete All Selected
-          </button>
+          <Tooltip text="Delete all selected elements">
+            <button
+              onClick={() => {
+                pushHistory();
+                deleteSelectedElements();
+              }}
+              className="w-full px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors"
+              style={{ backgroundColor: 'rgba(248, 81, 73, 0.1)', color: '#f85149' }}
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete All Selected
+            </button>
+          </Tooltip>
         </div>
       </div>
     );
@@ -172,31 +182,34 @@ export const RightSidebar: React.FC = () => {
           style={{ backgroundColor: '#21262d', color: '#e6edf3', border: '1px solid #30363d' }}
           rows={3}
         />
-        
+
         {/* AI Suggestions */}
-        <button
-          onClick={() => setShowAISuggestions(!showAISuggestions)}
-          className="mt-2 w-full px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors"
-          style={{ backgroundColor: 'rgba(31, 111, 235, 0.1)', color: '#1f6feb' }}
-        >
-          <Sparkles className="w-4 h-4" />
-          AI Suggestions
-        </button>
-        
+        <Tooltip text="Generate AI headline ideas">
+          <button
+            onClick={() => setShowAISuggestions(!showAISuggestions)}
+            className="mt-2 w-full px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors"
+            style={{ backgroundColor: 'rgba(31, 111, 235, 0.1)', color: '#1f6feb' }}
+          >
+            <Sparkles className="w-4 h-4" />
+            AI Suggestions
+          </button>
+        </Tooltip>
+
         {showAISuggestions && (
           <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
             {AI_HEADLINES.map((headline, i) => (
-              <button
-                key={i}
-                onClick={() => {
-                  updateElement(element.id, { content: headline });
-                  setShowAISuggestions(false);
-                }}
-                className="w-full px-3 py-2 rounded-lg text-left text-sm transition-colors"
-                style={{ backgroundColor: '#21262d', color: '#c9d1d9' }}
-              >
-                {headline}
-              </button>
+              <Tooltip key={i} text="Apply this headline">
+                <button
+                  onClick={() => {
+                    updateElement(element.id, { content: headline });
+                    setShowAISuggestions(false);
+                  }}
+                  className="w-full px-3 py-2 rounded-lg text-left text-sm transition-colors"
+                  style={{ backgroundColor: '#21262d', color: '#c9d1d9' }}
+                >
+                  {headline}
+                </button>
+              </Tooltip>
             ))}
           </div>
         )}
@@ -279,57 +292,87 @@ export const RightSidebar: React.FC = () => {
         <label className="block text-xs font-medium mb-2" style={{ color: '#8b949e' }}>Alignment</label>
         <div className="flex gap-1 rounded-lg p-1" style={{ backgroundColor: '#21262d' }}>
           {[
-            { value: 'left', icon: AlignLeft },
-            { value: 'center', icon: AlignCenter },
-            { value: 'right', icon: AlignRight },
-          ].map(({ value, icon: Icon }) => (
-            <button
-              key={value}
-              onClick={() => {
-                updateElement(element.id, { textAlign: value as any });
-              }}
-              className="flex-1 p-2 rounded-md transition-colors"
-              style={
-                element.textAlign === value
-                  ? { backgroundColor: '#1f6feb', color: 'white' }
-                  : { color: '#8b949e' }
-              }
-            >
-              <Icon className="w-4 h-4 mx-auto" />
-            </button>
+            { value: 'left', icon: AlignLeft, label: 'Align Left' },
+            { value: 'center', icon: AlignCenter, label: 'Align Center' },
+            { value: 'right', icon: AlignRight, label: 'Align Right' },
+          ].map(({ value, icon: Icon, label }) => (
+            <Tooltip key={value} text={label}>
+              <button
+                onClick={() => {
+                  updateElement(element.id, { textAlign: value as any });
+                }}
+                className="flex-1 p-2 rounded-md transition-colors w-full"
+                style={
+                  element.textAlign === value
+                    ? { backgroundColor: '#1f6feb', color: 'white' }
+                    : { color: '#8b949e' }
+                }
+              >
+                <Icon className="w-4 h-4 mx-auto" />
+              </button>
+            </Tooltip>
           ))}
         </div>
       </div>
 
-      {/* Line Height & Letter Spacing */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium mb-2" style={{ color: '#8b949e' }}>Line Height</label>
-          <input
-            type="number"
-            step="0.1"
-            value={element.lineHeight}
-            onChange={(e) => {
-              updateElement(element.id, { lineHeight: parseFloat(e.target.value) || 1.2 });
-            }}
-            className="w-full px-3 py-2 rounded-lg text-sm"
-            style={{ backgroundColor: '#21262d', color: '#e6edf3', border: '1px solid #30363d' }}
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium mb-2" style={{ color: '#8b949e' }}>Letter Spacing</label>
-          <input
-            type="number"
-            step="0.5"
-            value={element.letterSpacing}
-            onChange={(e) => {
-              updateElement(element.id, { letterSpacing: parseFloat(e.target.value) || 0 });
-            }}
-            className="w-full px-3 py-2 rounded-lg text-sm"
-            style={{ backgroundColor: '#21262d', color: '#e6edf3', border: '1px solid #30363d' }}
-          />
-        </div>
+      {/* Auto-fit Text (visible in both modes, but disabled in simple mode) */}
+      <div>
+        <label className="flex items-center justify-between cursor-pointer">
+          <span className="text-sm" style={{ color: '#c9d1d9' }}>Auto-fit Text</span>
+          <Tooltip text="Automatically reduce font size to fit container width">
+            <button
+              onClick={() => updateElement(element.id, { autoFit: !element.autoFit })}
+              className="w-12 h-6 rounded-full transition-colors"
+              style={element.autoFit ? { backgroundColor: '#1f6feb' } : { backgroundColor: '#30363d' }}
+              disabled={uiMode === 'simple'}
+            >
+              <div
+                className="w-5 h-5 bg-white rounded-full transform transition-transform"
+                style={
+                  element.autoFit
+                    ? { transform: 'translateX(24px)' }
+                    : { transform: 'translateX(2px)' }
+                }
+              />
+            </button>
+          </Tooltip>
+        </label>
       </div>
+
+      {/* Advanced Properties Accordion - only visible in advanced mode */}
+      {uiMode === 'advanced' && (
+        <Accordion title="Advanced Typography" defaultOpen={false}>
+          {/* Line Height & Letter Spacing */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium mb-2" style={{ color: '#8b949e' }}>Line Height</label>
+              <input
+                type="number"
+                step="0.1"
+                value={element.lineHeight}
+                onChange={(e) => {
+                  updateElement(element.id, { lineHeight: parseFloat(e.target.value) || 1.2 });
+                }}
+                className="w-full px-3 py-2 rounded-lg text-sm"
+                style={{ backgroundColor: '#21262d', color: '#e6edf3', border: '1px solid #30363d' }}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-2" style={{ color: '#8b949e' }}>Letter Spacing</label>
+              <input
+                type="number"
+                step="0.5"
+                value={element.letterSpacing}
+                onChange={(e) => {
+                  updateElement(element.id, { letterSpacing: parseFloat(e.target.value) || 0 });
+                }}
+                className="w-full px-3 py-2 rounded-lg text-sm"
+                style={{ backgroundColor: '#21262d', color: '#e6edf3', border: '1px solid #30363d' }}
+              />
+            </div>
+          </div>
+        </Accordion>
+      )}
     </div>
   );
 
@@ -345,8 +388,8 @@ export const RightSidebar: React.FC = () => {
       }
     };
 
-    return (
-      <div className="space-y-4">
+    const basicContent = (
+      <>
         <div>
           <label className="block text-xs font-medium mb-2" style={{ color: '#8b949e' }}>Screenshot</label>
           <input
@@ -356,45 +399,49 @@ export const RightSidebar: React.FC = () => {
             className="hidden"
             id="screenshot-upload"
           />
-          <label
-            htmlFor="screenshot-upload"
-            className="block w-full aspect-[9/16] rounded-xl border-2 border-dashed cursor-pointer overflow-hidden transition-colors"
-            style={{ borderColor: '#30363d', backgroundColor: '#21262d' }}
-          >
-            {element.screenshotSrc ? (
-              <img
-                src={element.screenshotSrc}
-                alt="Screenshot"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center gap-2" style={{ color: '#8b949e' }}>
-                <ImageIcon className="w-8 h-8" />
-                <span className="text-sm">Upload Screenshot</span>
-              </div>
-            )}
-          </label>
+          <Tooltip text="Upload screenshot to device">
+            <label
+              htmlFor="screenshot-upload"
+              className="block w-full aspect-[9/16] rounded-xl border-2 border-dashed cursor-pointer overflow-hidden transition-colors"
+              style={{ borderColor: '#30363d', backgroundColor: '#21262d' }}
+            >
+              {element.screenshotSrc ? (
+                <img
+                  src={element.screenshotSrc}
+                  alt="Screenshot"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center gap-2" style={{ color: '#8b949e' }}>
+                  <ImageIcon className="w-8 h-8" />
+                  <span className="text-sm">Upload Screenshot</span>
+                </div>
+              )}
+            </label>
+          </Tooltip>
         </div>
 
         <div>
           <label className="flex items-center justify-between cursor-pointer">
             <span className="text-sm" style={{ color: '#c9d1d9' }}>Show Device Frame</span>
-            <button
-              onClick={() => {
-                updateElement(element.id, { showFrame: !element.showFrame });
-              }}
-              className="w-12 h-6 rounded-full transition-colors"
-              style={element.showFrame ? { backgroundColor: '#1f6feb' } : { backgroundColor: '#30363d' }}
-            >
-              <div
-                className="w-5 h-5 bg-white rounded-full transform transition-transform"
-                style={
-                  element.showFrame 
-                    ? { transform: 'translateX(24px)' } 
-                    : { transform: 'translateX(2px)' }
-                }
-              />
-            </button>
+            <Tooltip text="Toggle device frame visibility">
+              <button
+                onClick={() => {
+                  updateElement(element.id, { showFrame: !element.showFrame });
+                }}
+                className="w-12 h-6 rounded-full transition-colors"
+                style={element.showFrame ? { backgroundColor: '#1f6feb' } : { backgroundColor: '#30363d' }}
+              >
+                <div
+                  className="w-5 h-5 bg-white rounded-full transform transition-transform"
+                  style={
+                    element.showFrame
+                      ? { transform: 'translateX(24px)' }
+                      : { transform: 'translateX(2px)' }
+                  }
+                />
+              </button>
+            </Tooltip>
           </label>
         </div>
 
@@ -418,21 +465,26 @@ export const RightSidebar: React.FC = () => {
           </div>
           <div className="flex gap-1 mt-2">
             {[-90, -45, 0, 45, 90].map((angle) => (
-              <button
-                key={angle}
-                onClick={() => updateElement(element.id, { rotation: angle })}
-                className="flex-1 px-2 py-1 rounded text-xs transition-colors"
-                style={{ 
-                  backgroundColor: element.rotation === angle ? '#1f6feb' : '#21262d',
-                  color: element.rotation === angle ? '#fff' : '#8b949e'
-                }}
-              >
-                {angle}°
-              </button>
+              <Tooltip key={angle} text={`Set rotation to ${angle}°`}>
+                <button
+                  onClick={() => updateElement(element.id, { rotation: angle })}
+                  className="flex-1 px-2 py-1 rounded text-xs transition-colors"
+                  style={{
+                    backgroundColor: element.rotation === angle ? '#1f6feb' : '#21262d',
+                    color: element.rotation === angle ? '#fff' : '#8b949e'
+                  }}
+                >
+                  {angle}°
+                </button>
+              </Tooltip>
             ))}
           </div>
         </div>
+      </>
+    );
 
+    const advancedContent = (
+      <>
         {/* Screenshot Scale Control - ONLY for realistic devices with screenshots */}
         {element.renderMode === 'realistic' && element.screenshotSrc && (
           <div className="pt-4 border-t border-[#30363d]">
@@ -454,25 +506,29 @@ export const RightSidebar: React.FC = () => {
               </span>
             </div>
             <div className="flex gap-2 mt-2">
-              <button
-                onClick={() => updateElement(element.id, { 
-                  ...element, 
-                  screenshotScale: 1,
-                  screenshotOffsetX: 0,
-                  screenshotOffsetY: 0 
-                })}
-                className="flex-1 px-3 py-1.5 rounded-lg text-xs transition-colors"
-                style={{ backgroundColor: '#21262d', color: '#c9d1d9', border: '1px solid #30363d' }}
-              >
-                Reset All
-              </button>
-              <button
-                onClick={() => updateElement(element.id, { ...element, screenshotSrc: '' })}
-                className="px-3 py-1.5 rounded-lg text-xs transition-colors"
-                style={{ backgroundColor: 'rgba(248, 81, 73, 0.1)', color: '#f85149', border: '1px solid rgba(248, 81, 73, 0.2)' }}
-              >
-                Remove
-              </button>
+              <Tooltip text="Reset screenshot position and scale">
+                <button
+                  onClick={() => updateElement(element.id, {
+                    ...element,
+                    screenshotScale: 1,
+                    screenshotOffsetX: 0,
+                    screenshotOffsetY: 0
+                  })}
+                  className="flex-1 px-3 py-1.5 rounded-lg text-xs transition-colors"
+                  style={{ backgroundColor: '#21262d', color: '#c9d1d9', border: '1px solid #30363d' }}
+                >
+                  Reset All
+                </button>
+              </Tooltip>
+              <Tooltip text="Remove screenshot from device">
+                <button
+                  onClick={() => updateElement(element.id, { ...element, screenshotSrc: '' })}
+                  className="px-3 py-1.5 rounded-lg text-xs transition-colors"
+                  style={{ backgroundColor: 'rgba(248, 81, 73, 0.1)', color: '#f85149', border: '1px solid rgba(248, 81, 73, 0.2)' }}
+                >
+                  Remove
+                </button>
+              </Tooltip>
             </div>
 
             <div className="mt-4 space-y-3">
@@ -521,26 +577,30 @@ export const RightSidebar: React.FC = () => {
           <div>
             <label className="block text-xs font-medium mb-2" style={{ color: '#8b949e' }}>Render Mode</label>
             <div className="flex gap-2">
-              <button
-                onClick={() => updateElement(element.id, { renderMode: '2d' })}
-                className="flex-1 px-3 py-2 rounded-lg text-sm transition-colors"
-                style={{ 
-                  backgroundColor: element.renderMode === '2d' ? '#1f6feb' : '#21262d',
-                  color: element.renderMode === '2d' ? '#fff' : '#8b949e'
-                }}
-              >
-                2D
-              </button>
-              <button
-                onClick={() => updateElement(element.id, { renderMode: '3d' })}
-                className="flex-1 px-3 py-2 rounded-lg text-sm transition-colors"
-                style={{ 
-                  backgroundColor: element.renderMode === '3d' ? '#1f6feb' : '#21262d',
-                  color: element.renderMode === '3d' ? '#fff' : '#8b949e'
-                }}
-              >
-                3D
-              </button>
+              <Tooltip text="Switch to 2D rendering">
+                <button
+                  onClick={() => updateElement(element.id, { renderMode: '2d' })}
+                  className="flex-1 px-3 py-2 rounded-lg text-sm transition-colors w-full"
+                  style={{
+                    backgroundColor: element.renderMode === '2d' ? '#1f6feb' : '#21262d',
+                    color: element.renderMode === '2d' ? '#fff' : '#8b949e'
+                  }}
+                >
+                   2D
+                </button>
+              </Tooltip>
+              <Tooltip text="Switch to 3D rendering">
+                <button
+                  onClick={() => updateElement(element.id, { renderMode: '3d' })}
+                  className="flex-1 px-3 py-2 rounded-lg text-sm transition-colors w-full"
+                  style={{
+                    backgroundColor: element.renderMode === '3d' ? '#1f6feb' : '#21262d',
+                    color: element.renderMode === '3d' ? '#fff' : '#8b949e'
+                  }}
+                >
+                   3D
+                </button>
+              </Tooltip>
             </div>
           </div>
         )}
@@ -550,39 +610,45 @@ export const RightSidebar: React.FC = () => {
           <div>
             <label className="block text-xs font-medium mb-2" style={{ color: '#8b949e' }}>Orientation</label>
             <div className="flex gap-2">
-              <button
-                onClick={() => updateElement(element.id, { orientation: 'portrait' })}
-                className="flex-1 px-2 py-2 rounded-lg text-xs transition-colors flex flex-col items-center"
-                style={{ 
-                  backgroundColor: element.orientation === 'portrait' ? '#1f6feb' : '#21262d',
-                  color: element.orientation === 'portrait' ? '#fff' : '#8b949e'
-                }}
-              >
-                <span className="text-lg mb-1">📱</span>
-                Portrait
-              </button>
-              <button
-                onClick={() => updateElement(element.id, { orientation: 'landscape-left' })}
-                className="flex-1 px-2 py-2 rounded-lg text-xs transition-colors flex flex-col items-center"
-                style={{ 
-                  backgroundColor: element.orientation === 'landscape-left' ? '#1f6feb' : '#21262d',
-                  color: element.orientation === 'landscape-left' ? '#fff' : '#8b949e'
-                }}
-              >
-                <span className="text-lg mb-1">↙️</span>
-                Landscape L
-              </button>
-              <button
-                onClick={() => updateElement(element.id, { orientation: 'landscape-right' })}
-                className="flex-1 px-2 py-2 rounded-lg text-xs transition-colors flex flex-col items-center"
-                style={{ 
-                  backgroundColor: element.orientation === 'landscape-right' ? '#1f6feb' : '#21262d',
-                  color: element.orientation === 'landscape-right' ? '#fff' : '#8b949e'
-                }}
-              >
-                <span className="text-lg mb-1">↘️</span>
-                Landscape R
-              </button>
+              <Tooltip text="Portrait orientation">
+                <button
+                  onClick={() => updateElement(element.id, { orientation: 'portrait' })}
+                  className="flex-1 px-2 py-2 rounded-lg text-xs transition-colors flex flex-col items-center w-full"
+                  style={{
+                    backgroundColor: element.orientation === 'portrait' ? '#1f6feb' : '#21262d',
+                    color: element.orientation === 'portrait' ? '#fff' : '#8b949e'
+                  }}
+                >
+                  <span className="text-lg mb-1">📱</span>
+                  Portrait
+                </button>
+              </Tooltip>
+              <Tooltip text="Landscape Left orientation">
+                <button
+                  onClick={() => updateElement(element.id, { orientation: 'landscape-left' })}
+                  className="flex-1 px-2 py-2 rounded-lg text-xs transition-colors flex flex-col items-center w-full"
+                  style={{
+                    backgroundColor: element.orientation === 'landscape-left' ? '#1f6feb' : '#21262d',
+                    color: element.orientation === 'landscape-left' ? '#fff' : '#8b949e'
+                  }}
+                >
+                  <span className="text-lg mb-1">↙️</span>
+                  Landscape L
+                </button>
+              </Tooltip>
+              <Tooltip text="Landscape Right orientation">
+                <button
+                  onClick={() => updateElement(element.id, { orientation: 'landscape-right' })}
+                  className="flex-1 px-2 py-2 rounded-lg text-xs transition-colors flex flex-col items-center w-full"
+                  style={{
+                    backgroundColor: element.orientation === 'landscape-right' ? '#1f6feb' : '#21262d',
+                    color: element.orientation === 'landscape-right' ? '#fff' : '#8b949e'
+                  }}
+                >
+                  <span className="text-lg mb-1">↘️</span>
+                  Landscape R
+                </button>
+              </Tooltip>
             </div>
           </div>
         )}
@@ -598,20 +664,32 @@ export const RightSidebar: React.FC = () => {
                 { id: 'tilt-right', label: 'Tilt Right' },
                 { id: 'isometric', label: 'Isometric' },
               ].map((angle) => (
-                <button
-                  key={angle.id}
-                  onClick={() => updateElement(element.id, { cameraAngle: angle.id as any })}
-                  className="px-3 py-2 rounded-lg text-xs transition-colors"
-                  style={{ 
-                    backgroundColor: element.cameraAngle === angle.id ? '#1f6feb' : '#21262d',
-                    color: element.cameraAngle === angle.id ? '#fff' : '#8b949e'
-                  }}
-                >
-                  {angle.label}
-                </button>
+                <Tooltip key={angle.id} text={`Camera: ${angle.label}`}>
+                  <button
+                    onClick={() => updateElement(element.id, { cameraAngle: angle.id as any })}
+                    className="px-3 py-2 rounded-lg text-xs transition-colors w-full"
+                    style={{
+                      backgroundColor: element.cameraAngle === angle.id ? '#1f6feb' : '#21262d',
+                      color: element.cameraAngle === angle.id ? '#fff' : '#8b949e'
+                    }}
+                  >
+                    {angle.label}
+                  </button>
+                </Tooltip>
               ))}
             </div>
           </div>
+        )}
+      </>
+    );
+
+    return (
+      <div className="space-y-4">
+        {basicContent}
+        {uiMode === 'advanced' && (
+          <Accordion title="Advanced Device Settings" defaultOpen={false}>
+            {advancedContent}
+          </Accordion>
         )}
       </div>
     );
@@ -795,62 +873,74 @@ export const RightSidebar: React.FC = () => {
       {/* Actions */}
       <div className="p-4 space-y-2" style={{ borderTop: '1px solid #30363d' }}>
         <div className="flex gap-2">
-          <button
-            onClick={() => bringToFront(selectedElement!.id)}
-            className="flex-1 px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors"
-            style={{ backgroundColor: '#21262d', color: '#c9d1d9' }}
-          >
-            <ChevronsUp className="w-4 h-4" />
-            Front
-          </button>
-          <button
-            onClick={() => bringForward(selectedElement!.id)}
-            className="flex-1 px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors"
-            style={{ backgroundColor: '#21262d', color: '#c9d1d9' }}
-          >
-            <ChevronUp className="w-4 h-4" />
-            Forward
-          </button>
+          <Tooltip text="Bring to very front">
+            <button
+              onClick={() => bringToFront(selectedElement!.id)}
+              className="flex-1 px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors w-full"
+              style={{ backgroundColor: '#21262d', color: '#c9d1d9' }}
+            >
+              <ChevronsUp className="w-4 h-4" />
+              Front
+            </button>
+          </Tooltip>
+          <Tooltip text="Move one layer forward">
+            <button
+              onClick={() => bringForward(selectedElement!.id)}
+              className="flex-1 px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors w-full"
+              style={{ backgroundColor: '#21262d', color: '#c9d1d9' }}
+            >
+              <ChevronUp className="w-4 h-4" />
+              Forward
+            </button>
+          </Tooltip>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={() => sendBackward(selectedElement!.id)}
-            className="flex-1 px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors"
-            style={{ backgroundColor: '#21262d', color: '#c9d1d9' }}
-          >
-            <ChevronDown className="w-4 h-4" />
-            Backward
-          </button>
-          <button
-            onClick={() => sendToBack(selectedElement!.id)}
-            className="flex-1 px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors"
-            style={{ backgroundColor: '#21262d', color: '#c9d1d9' }}
-          >
-            <ChevronsDown className="w-4 h-4" />
-            Back
-          </button>
+          <Tooltip text="Move one layer backward">
+            <button
+              onClick={() => sendBackward(selectedElement!.id)}
+              className="flex-1 px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors w-full"
+              style={{ backgroundColor: '#21262d', color: '#c9d1d9' }}
+            >
+              <ChevronDown className="w-4 h-4" />
+              Backward
+            </button>
+          </Tooltip>
+          <Tooltip text="Send to very back">
+            <button
+              onClick={() => sendToBack(selectedElement!.id)}
+              className="flex-1 px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors w-full"
+              style={{ backgroundColor: '#21262d', color: '#c9d1d9' }}
+            >
+              <ChevronsDown className="w-4 h-4" />
+              Back
+            </button>
+          </Tooltip>
         </div>
 
         <div className="flex gap-2">
-          <button
-            onClick={handleDuplicate}
-            className="flex-1 px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors"
-            style={{ backgroundColor: '#21262d', color: '#c9d1d9' }}
-          >
-            <Copy className="w-4 h-4" />
-            Duplicate
-          </button>
-          <button
-            onClick={() => {
-              pushHistory();
-              deleteElement(selectedElement!.id);
-            }}
-            className="flex-1 px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors"
-            style={{ backgroundColor: 'rgba(248, 81, 73, 0.1)', color: '#f85149' }}
-          >
-            <Trash2 className="w-4 h-4" />
-            Delete
-          </button>
+          <Tooltip text="Duplicate element">
+            <button
+              onClick={handleDuplicate}
+              className="flex-1 px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors w-full"
+              style={{ backgroundColor: '#21262d', color: '#c9d1d9' }}
+            >
+              <Copy className="w-4 h-4" />
+              Duplicate
+            </button>
+          </Tooltip>
+          <Tooltip text="Delete element">
+            <button
+              onClick={() => {
+                pushHistory();
+                deleteElement(selectedElement!.id);
+              }}
+              className="flex-1 px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors w-full"
+              style={{ backgroundColor: 'rgba(248, 81, 73, 0.1)', color: '#f85149' }}
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete
+            </button>
+          </Tooltip>
         </div>
       </div>
     </div>

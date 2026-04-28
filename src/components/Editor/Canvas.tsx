@@ -1,9 +1,10 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useStore } from '../../store/useStore';
-import { CanvasElement, IOS_SIZES, ANDROID_SIZES, DEVICE_MOCKUPS, DeviceElement } from '../../types';
+import { CanvasElement, IOS_SIZES, ANDROID_SIZES, DEVICE_MOCKUPS, DeviceElement, TextElement } from '../../types';
 import { Smartphone } from 'lucide-react';
 import { Device3DPreview } from './Device3DRenderer';
 import { getRealisticDeviceById } from '../../data/realisticDevices';
+import { TextElementComponent } from './TextElementComponent';
 
 interface DragState {
   isDragging: boolean;
@@ -197,25 +198,64 @@ export const Canvas: React.FC = () => {
   };
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
+    const { panoramicMode } = useStore.getState();
+  const handleMouseMove = (e: MouseEvent) => {
       if (dragState.isDragging && dragState.elementIds.length > 0) {
         const deltaX = (e.clientX - dragState.startX) / zoom;
         const deltaY = (e.clientY - dragState.startY) / zoom;
-        
+
         if (!currentScreenshot) return;
-        
-        const elementsToMove = currentScreenshot.elements.filter(el => 
+
+        const elementsToMove = currentScreenshot.elements.filter(el =>
           dragState.elementIds.includes(el.id)
         );
-        
+
         if (elementsToMove.length === 0) return;
-        
+
         const guides = findAlignmentGuides(elementsToMove, deltaX, deltaY);
+
+        // Add panoramic snap: snap edges of dragged elements to edges of other elements
+        if (panoramicMode) {
+          const threshold = 5;
+          elementsToMove.forEach(el => {
+            const elLeft = (el as any).x + deltaX;
+            const elRight = (el as any).x + (el as any).width + deltaX;
+            const elTop = (el as any).y + deltaY;
+            const elBottom = (el as any).y + (el as any).height + deltaY;
+
+            currentScreenshot.elements.forEach(other => {
+              if (dragState.elementIds.includes(other.id)) return;
+
+              const oLeft = (other as any).x;
+              const oRight = (other as any).x + (other as any).width;
+              const oTop = (other as any).y;
+              const oBottom = (other as any).y + (other as any).height;
+
+              // Snap right edge to left edge
+              if (Math.abs(elRight - oLeft) < threshold) {
+                guides.push({ type: 'vertical', position: oLeft });
+              }
+              // Snap left edge to right edge
+              if (Math.abs(elLeft - oRight) < threshold) {
+                guides.push({ type: 'vertical', position: oRight });
+              }
+              // Snap bottom edge to top edge
+              if (Math.abs(elBottom - oTop) < threshold) {
+                guides.push({ type: 'horizontal', position: oTop });
+              }
+              // Snap top edge to bottom edge
+              if (Math.abs(elTop - oBottom) < threshold) {
+                guides.push({ type: 'horizontal', position: oBottom });
+              }
+            });
+          });
+        }
+
         setAlignmentGuides(guides);
-        
+
         let snapOffsetX = 0;
         let snapOffsetY = 0;
-        
+
         for (const guide of guides) {
           if (guide.type === 'vertical' && elementsToMove.length > 0) {
             const firstEl = elementsToMove[0];
@@ -232,7 +272,7 @@ export const Canvas: React.FC = () => {
             }
           }
         }
-        
+
         const adjustedDeltaX = showGrid ? snapToGrid(deltaX + snapOffsetX) - snapOffsetX : deltaX + snapOffsetX;
         const adjustedDeltaY = showGrid ? snapToGrid(deltaY + snapOffsetY) - snapOffsetY : deltaY + snapOffsetY;
         
@@ -448,29 +488,21 @@ export const Canvas: React.FC = () => {
     switch (element.type) {
       case 'text':
         return (
-          <div
-            key={element.id}
+          <TextElementComponent
+            element={element as TextElement}
             style={{
               ...baseStyle,
               ...selectionStyle,
-              fontSize: element.fontSize,
               fontWeight: element.fontWeight,
               fontFamily: element.fontFamily,
               color: element.color,
               textAlign: element.textAlign,
               lineHeight: element.lineHeight,
               letterSpacing: element.letterSpacing,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: element.textAlign === 'center' ? 'center' : element.textAlign === 'right' ? 'flex-end' : 'flex-start',
-              overflow: 'hidden',
-              wordBreak: 'break-word',
             }}
-            onMouseDown={(e) => handleMouseDown(e, element)}
-          >
-            {element.content}
-            {renderResizeHandles()}
-          </div>
+            onMouseDown={(e, el) => handleMouseDown(e, el as any)}
+            renderResizeHandles={() => renderResizeHandles()}
+          />
         );
 
       case 'image':

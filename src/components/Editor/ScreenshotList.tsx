@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '../../store/useStore';
+import { Tooltip } from './Tooltip';
 import { Plus, Copy, Trash2, Pencil, Check, X, Film } from 'lucide-react';
 
 export const ScreenshotList: React.FC = () => {
@@ -79,14 +80,15 @@ export const ScreenshotList: React.FC = () => {
           <span className="text-xs font-medium">Screens</span>
           <span className="text-xs" style={{ color: '#6e7681' }}>({currentProject?.screenshots.length})</span>
         </div>
-        <button
-          onClick={createScreenshot}
-          className="p-1 rounded transition-colors"
-          style={{ color: '#8b949e' }}
-          title="Add Screenshot"
-        >
-          <Plus className="w-4 h-4" />
-        </button>
+        <Tooltip text="Create new blank screenshot">
+          <button
+            onClick={createScreenshot}
+            className="p-1 rounded transition-colors"
+            style={{ color: '#8b949e' }}
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </Tooltip>
       </div>
 
       {/* Filmstrip */}
@@ -175,16 +177,18 @@ export const ScreenshotList: React.FC = () => {
                     className="w-full px-1 py-0.5 text-[10px] rounded text-center"
                     style={{ backgroundColor: '#21262d', color: '#e6edf3', border: '1px solid #30363d' }}
                   />
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      finishRename();
-                    }}
-                    className="p-0.5 rounded transition-colors"
-                    style={{ backgroundColor: '#238636' }}
-                  >
-                    <Check className="w-3 h-3 text-white" />
-                  </button>
+                  <Tooltip text="Save new name">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        finishRename();
+                      }}
+                      className="p-0.5 rounded transition-colors"
+                      style={{ backgroundColor: '#238636' }}
+                    >
+                      <Check className="w-3 h-3 text-white" />
+                    </button>
+                  </Tooltip>
                 </div>
               ) : (
                 <div className="flex items-center justify-between">
@@ -192,38 +196,43 @@ export const ScreenshotList: React.FC = () => {
                     {screenshot.name}
                   </span>
                   <div className="flex gap-0.5">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        startRename(screenshot.id, screenshot.name);
-                      }}
-                      className="p-0.5 rounded transition-colors"
-                      style={{ backgroundColor: 'transparent' }}
-                    >
-                      <Pencil className="w-3 h-3" style={{ color: '#8b949e' }} />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        pushHistory();
-                        duplicateScreenshot(screenshot.id);
-                      }}
-                      className="p-0.5 rounded transition-colors"
-                      style={{ backgroundColor: 'transparent' }}
-                    >
-                      <Copy className="w-3 h-3" style={{ color: '#8b949e' }} />
-                    </button>
-                    <span
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        console.log('Delete span clicked:', screenshot.id);
-                        deleteScreenshot(screenshot.id);
-                      }}
-                      className="p-0.5 rounded transition-colors hover:bg-[#f85149]/20 cursor-pointer"
-                      style={{ backgroundColor: 'transparent' }}
-                    >
-                        <Trash2 className="w-3 h-3" style={{ color: '#f85149' }} />
-                    </span>
+                    <Tooltip text="Rename screenshot">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startRename(screenshot.id, screenshot.name);
+                        }}
+                        className="p-0.5 rounded transition-colors"
+                        style={{ backgroundColor: 'transparent' }}
+                      >
+                        <Pencil className="w-3 h-3" style={{ color: '#8b949e' }} />
+                      </button>
+                    </Tooltip>
+                    <Tooltip text="Duplicate screenshot">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          pushHistory();
+                          duplicateScreenshot(screenshot.id);
+                        }}
+                        className="p-0.5 rounded transition-colors"
+                        style={{ backgroundColor: 'transparent' }}
+                      >
+                        <Copy className="w-3 h-3" style={{ color: '#8b949e' }} />
+                      </button>
+                    </Tooltip>
+                    <Tooltip text="Delete screenshot">
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteScreenshot(screenshot.id);
+                        }}
+                        className="p-0.5 rounded transition-colors hover:bg-[#f85149]/20 cursor-pointer"
+                        style={{ backgroundColor: 'transparent' }}
+                      >
+                          <Trash2 className="w-3 h-3" style={{ color: '#f85149' }} />
+                      </span>
+                    </Tooltip>
                   </div>
                 </div>
               )}
@@ -232,14 +241,16 @@ export const ScreenshotList: React.FC = () => {
         ))}
 
         {/* Add button */}
-        <button
-          onClick={createScreenshot}
-          className="w-full aspect-[9/16] border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-1 transition-all"
-          style={{ borderColor: '#30363d', backgroundColor: 'transparent' }}
-        >
-          <Plus className="w-5 h-5" style={{ color: '#8b949e' }} />
-          <span className="text-[10px]" style={{ color: '#8b949e' }}>Add</span>
-        </button>
+        <Tooltip text="Add new screenshot">
+          <button
+            onClick={createScreenshot}
+            className="w-full aspect-[9/16] border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-1 transition-all"
+            style={{ borderColor: '#30363d', backgroundColor: 'transparent' }}
+          >
+            <Plus className="w-5 h-5" style={{ color: '#8b949e' }} />
+            <span className="text-[10px]" style={{ color: '#8b949e' }}>Add</span>
+          </button>
+        </Tooltip>
       </div>
     </div>
   );
